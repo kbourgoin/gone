@@ -27,6 +27,16 @@ class AST(object):
         for name,value in kwargs.items():
             setattr(self,name,value)
 
+    def __repr__(self):
+        vals = []
+        for f in self._fields:
+            if not isinstance(getattr(self, f), list) and not isinstance(getattr(self, f), AST):
+                vals.append('{}={}'.format(f, getattr(self, f)))
+        if vals:
+            return '{} {}'.format(self.__class__.__name__, vals)
+        else:
+            return '{}'.format(self.__class__.__name__)
+
 # ----------------------------------------------------------------------
 # Specific AST nodes.
 #
