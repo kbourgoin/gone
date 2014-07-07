@@ -189,7 +189,7 @@ def t_INTEGER(t):
 # their corresponding raw character code.
 #
 def t_STRING(t):
-    r'"(\\"|\n|[^"])*?"'
+    r'"(\\"|[^\n])*?[^\\]"'
     # Strip off the leading/trailing quotes
     t.value = t.value[1:-1]
     t.value = t.value.replace('\\n', '\n')
@@ -251,7 +251,8 @@ def t_COMMENT_UNTERM(t):
 
 # Unterminated string literal
 def t_STRING_UNTERM(t):
-    r'".*(?<!")'
+    r'"(\\"|[^\n])*?\n'
+    old = r'"[^\n]*(?!")'
     error(t.lexer.lineno,"Unterminated string literal")
     t.lexer.lineno += 1
 
