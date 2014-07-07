@@ -53,6 +53,51 @@ class Literal(AST):
     '''
     _fields = ['value']
 
+class Program(AST):
+    _fields = ['statements']
+
+class Statements(AST):
+    _fields = ['statement_list']
+
+class Statement(AST):
+    _fields = ['declaration']
+
+class UnaryOp(AST):
+    _fields = ['op', 'target']
+
+class BinaryOp(AST):
+    _fields = ['op', 'left', 'right']
+
+class Location(AST):
+    _fields = ['id']
+
+class Typename(AST):
+    _fields = ['id']
+
+class Const(AST):
+    _fields = ['name', 'expression']
+
+class Var(AST):
+    _fields = ['name', 'typename', 'expression']
+
+class AssignStatement(AST):
+    _fields = ['location', 'expression']
+
+class ExternDeclaration(AST):
+    _fields = ['func_prototype']
+
+class FunctionCall(AST):
+    _fields = ['name', 'parameters']
+
+class ExternDeclaration(AST):
+    _fields = ['prototype']
+
+class FunctionPrototype(AST):
+    _fields = ['name', 'parameters', 'output_typename']
+
+class Parameter(AST):
+    _fields = ['name', 'type']
+
 # You need to add more nodes here.  Suggested nodes include
 # BinaryOperator, UnaryOperator, ConstDeclaration, VarDeclaration,
 # AssignmentStatement, etc...

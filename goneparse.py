@@ -87,7 +87,7 @@ from gonelex import tokens
 # ----------------------------------------------------------------------
 # Get the AST nodes.
 # Read instructions in goneast.py
-from gonerast import *
+from goneast import *
 
 # ----------------------------------------------------------------------
 # Operator precedence table.   Operators must follow the same
@@ -134,17 +134,152 @@ precedence = (
 # The following grammar rules should give you an idea of how to start.
 # Try running this file on the input Tests/parsetest0.e
 
-def p_print_statemnt(p):
+def p_program(p):
+    '''program : statements
+               | empty
+    '''
+    p[0] = Program(p[1])
+
+def p_statements(p):
+    '''statements :  statements statement
+                  |  statement
+    '''
+    if isinstance(p[1], Statements):
+        p[0] = p[1]
+        p[0].statement_list.append(p[2])
+    else:
+        p[0] = Statements([p[1]])
+
+def p_statement(p):
+    '''
+    statement :  print_statement
+              |  assign_statement
+              |  extern_declaration
+              |  const_declaration
+              |  var_declaration
+    '''
+    p[0] = p[1]
+
+def p_const_declaration(p):
+    '''
+    const_declaration : CONST ID ASSIGN expression SEMI
+    '''
+    p[0] = Const(p[2], p[4])
+
+def p_print_statement(p):
     '''
     print_statement : PRINT expression SEMI
     '''
     p[0] = PrintStatement(p[2])
 
-def p_expression(p):
+def p_var_declaration(p):
+    '''
+    var_declaration : VAR ID typename SEMI
+                    | VAR ID typename ASSIGN expression SEMI
+    '''
+    if len(p) == 5:
+        p[0] = Var(p[2], p[3], None)
+    else:
+        p[0] = Var(p[2], p[3], p[5])
+
+def p_assign_statement(p):
+    '''
+    assign_statement : location ASSIGN expression SEMI
+    '''
+    p[0] = AssignStatement(p[1], p[3])
+
+def p_extern_declaration(p):
+    '''
+    extern_declaration : EXTERN func_prototype SEMI
+    '''
+    p[0] = ExternDeclaration(p[2])
+
+def p_expression_literal(p):
     '''
     expression : literal
     '''
     p[0] = p[1]
+
+def p_expression_location(p):
+    '''
+    expression : location
+    '''
+    p[0] = p[1]
+
+def p_expression_binaryop(p):
+    '''
+    expression : expression PLUS expression
+               | expression MINUS expression
+               | expression TIMES expression
+               | expression DIVIDE expression
+    '''
+    p[0] = BinaryOp(p[2], p[1], p[3])
+
+def p_expression_unaryop(p):
+    '''
+    expression : PLUS expression
+               | MINUS expression
+    '''
+    p[0] = UnaryOp(p[1], p[2])
+
+def p_epxression_parens(p):
+    '''
+    expression : LPAREN expression RPAREN
+    '''
+    p[0] = p[2]
+
+def p_expression_func(p):
+    '''
+    expression : ID LPAREN exprlist RPAREN
+    '''
+    p[0] = FunctionCall(p[1], p[3])
+
+def p_exprlist_first(p):
+    '''
+    exprlist : expression
+             | empty
+    '''
+    if p[1] is None:
+        p[0] = []
+    else:
+        p[0] = [p[1]]
+
+def p_exprlist(p):
+    '''
+    exprlist : exprlist COMMA expression
+    '''
+    p[0] = p[1]
+    p[0].append(p[3])
+
+def p_func_prototype(p):
+    '''
+    func_prototype : FUNC ID LPAREN parameters RPAREN typename
+    '''
+    p[0] = FunctionPrototype(p[2], p[4], p[6])
+
+def p_parameters_first(p):
+    '''
+    parameters : parm_declaration
+               | empty
+    '''
+    if p[1] is None:
+        p[0] = []
+    else:
+        p[0] = [p[1]]
+
+def p_parameters(p):
+    '''
+    parameters : parameters COMMA parm_declaration
+    '''
+    p[0] = p[1]
+    p[0].append(p[3])
+
+def p_parameter(p):
+    '''
+    parm_declaration : ID typename
+    '''
+    p[0] = Parameter(p[1], p[2])
+
 
 def p_literal(p):
     '''
@@ -154,7 +289,27 @@ def p_literal(p):
     '''
     p[0] = Literal(p[1],lineno=p.lineno(1))
 
+def p_location(p):
+    '''
+    location : ID
+    '''
+    p[0] = Location(p[1])
+
+def p_typename(p):
+    '''
+    typename : ID
+    '''
+    p[0] = Typename(p[1])
+
+def p_empty(p):
+    '''
+    empty :
+    '''
+    p[0] = None
+
+
 # You need to implement the rest of the grammar rules here
+
 
 
 # ----------------------------------------------------------------------
