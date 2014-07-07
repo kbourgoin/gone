@@ -18,7 +18,7 @@ compiler supports multiple source files, add the filename keyword argument.
        error(lineno,"Some kind of error message",filename="foo.src")
 
 Error handling is based on a subscription based model using context-managers
-and the subscribe_errors() function. For example, to route error messages to 
+and the subscribe_errors() function. For example, to route error messages to
 standard output, use this:
 
        with subscribe_errors(print):
@@ -99,6 +99,3 @@ def subscribe_errors(handler):
         yield
     finally:
         _subscribers.remove(handler)
-    
-    
-

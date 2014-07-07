@@ -28,7 +28,7 @@ text.
 
 Reserved Keywords:
     CONST   : 'const'
-    VAR     : 'var'  
+    VAR     : 'var'
     PRINT   : 'print'
     LEN     : 'len'
     FUNC    : 'func'
@@ -52,7 +52,7 @@ Operators and Delimiters:
     COMMA    : ','
 
 Literals:
-    INTEGER : '123'  
+    INTEGER : '123'
     FLOAT   : '1.234'
               '1.234e1'
               '1.234e+1'
@@ -69,8 +69,8 @@ Comments:  To be ignored by your lexer
 
 Errors: Your lexer must report the following error messages:
 
-     lineno: Illegal char 'c'         
-     lineno: Unterminated string     
+     lineno: Illegal char 'c'
+     lineno: Unterminated string
      lineno: Unterminated comment
 
 Testing
@@ -114,9 +114,9 @@ tokens = [
 
     # Operators and delimiters
     'PLUS', 'MINUS', 'TIMES', 'DIVIDE',
-    'ASSIGN', 'SEMI', 'LPAREN', 'RPAREN', 
+    'ASSIGN', 'SEMI', 'LPAREN', 'RPAREN',
     'COMMA',
-    
+
     # Literals
     'INTEGER', 'FLOAT', 'STRING',
 ]
@@ -124,30 +124,26 @@ tokens = [
 # ----------------------------------------------------------------------
 # Ignored characters (whitespace)
 #
-# The following characters are ignored completely by the lexer. 
+# The following characters are ignored completely by the lexer.
 # Do not change.
 
 t_ignore = ' \t\r'
 
 # ----------------------------------------------------------------------
-# *** YOU MUST COMPLETE : write the regexs indicated below ***
-# 
-# Tokens for simple symbols: + - * / = ( ) ; 
+# Tokens for simple symbols: + - * / = ( ) ;
 
-t_PLUS      = r'regex for a single plus sign'
-t_MINUS     = r'regex for a single minus sign'
-t_TIMES     = r'regex for a single star'
-t_DIVIDE    = r'regex for a single forward slash'
-t_ASSIGN    = r'regex for a single equals sign'
-t_SEMI      = r'regex for a semicolon'
-t_LPAREN    = r'regex for a left paren ('
-t_RPAREN    = r'regex for a right paren )'
-t_COMMA     = r'regex for a comma'
+t_PLUS      = r'\+'
+t_MINUS     = r'-'
+t_TIMES     = r'\*'
+t_DIVIDE    = r'/'
+t_ASSIGN    = r'='
+t_SEMI      = r';'
+t_LPAREN    = r'\('
+t_RPAREN    = r'\)'
+t_COMMA     = r','
 
 # ----------------------------------------------------------------------
-# *** YOU MUST COMPLETE : write the regexs and additional code below ***
-#
-# Tokens for literals, INTEGER, FLOAT, STRING. 
+# Tokens for literals, INTEGER, FLOAT, STRING.
 
 # Floating point constant.   You must recognize floating point numbers in
 # formats as shown in the following examples:
@@ -156,19 +152,26 @@ t_COMMA     = r'regex for a comma'
 #
 # The value should be converted to a Python float when lexed
 def t_FLOAT(t):
-    r'regex for a floating point number'
+    r'\d*((\.\d*)([eE][+-]?\d+)?|([eE][+-]?\d+))'
     t.value = float(t.value)               # Conversion to Python float
     return t
 
 # Integer constant. For example:
-# 
-#     1234            
+#
+#     1234
+#     0x4d2  # hex
+#     0o2322 # octal
 
 # The value should be converted to a Python int when lexed.
 def t_INTEGER(t):
-    r'regex for an integer'
+    r'(0x[0-9a-fA-F]+|0o[0-7]+|\d+)'
     # Conversion to a Python int
-    t.value = int(t.value)
+    if t.value.startswith('0x'):
+        t.value = int(t.value[2:], 16)
+    elif t.value.startswith('0o'):
+        t.value = int(t.value[2:], 8)
+    else:
+        t.value = int(t.value)
     return t
 
 # String constant. You must recognize text enclosed in quotes.
@@ -176,8 +179,8 @@ def t_INTEGER(t):
 #
 #     "Hello World"
 #
-# BONUS: Allow string codes to have escape codes such as the following:
-#      
+# Allow string codes to have escape codes such as the following:
+#
 #       \n    = newline (10)
 #       \\    = baskslash char (\)
 #       \"    = quote (")
@@ -185,67 +188,54 @@ def t_INTEGER(t):
 # The token value should be the string with all escape codes replaced by
 # their corresponding raw character code.
 #
-# CAUTION:  Implementing escape codes is a lot harder than it looks.
-# They are not critical for the rest of the project--only work on it
-# if you are bored and have extra time.
-    
 def t_STRING(t):
-    r'regex for a string literal'
+    r'"(\\"|\n|[^"])*?"'
     # Strip off the leading/trailing quotes
     t.value = t.value[1:-1]
-
-    # If you are going to replace the string escape codes, do it here
-    # ---
-
+    t.value = t.value.replace('\\n', '\n')
+    t.value = t.value.replace('\\\\', '\\')
+    t.value = t.value.replace(r'\"', '"')
     return t
 
 # ----------------------------------------------------------------------
-# *** YOU MUST COMPLETE : Write the regex and add keywords ***
-#
-# Identifiers and keywords. 
+# Identifiers and keywords.
 
 # Match a raw identifier.  Identifiers follow the same rules as Python.
 # That is, they start with a letter or underscore (_) and can contain
 # an arbitrary number of letters, digits, or underscores after that.
 def t_ID(t):
-    r'regex for an identifier'
-
-    # *** YOU MUST IMPLEMENT ***
-    # Add code to match keywords such as 'var','const','print','func','extern'
-    # Change the token type as needed.  For example:
-    #
-    # if t.value =='var':
-    #      t.type = 'VAR'
-    #
-
+    r'[a-zA-Z_][a-zA-Z0-9_]*'
+    keywords = {'var': 'VAR',
+                'const': 'CONST',
+                'print': 'PRINT',
+                'func': 'FUNC',
+                'extern': 'EXTERN',
+                }
+    t.type = keywords.get(t.value, 'ID')
     return t
 
 # ----------------------------------------------------------------------
-# *** YOU MUST COMPLETE : Write the indicated regexes ***
-#
 # Ignored text.   The following rules are used to ignore text in the
 # input file.  This includes comments and blank lines
 
 # One or more blank lines
 def t_newline(t):
-    r'regex for one or more newlines'
+    r'[\r\n]+'
     t.lexer.lineno += len(t.value)
 
 # C-style comment (/* ... */)
 def t_COMMENT(t):
-    r'regex for a C style comment'
+    r'(/\*)(.|\n)*?(\*/)'
 
     # Must count the number of newlines included to keep line count accurate
     t.lexer.lineno += t.value.count('\n')
-    
+
 # C++-style comment (//...)
 def t_CPPCOMMENT(t):
-    r'regex for a C plusplus comment'
+    r'//.*'
     t.lexer.lineno += 1
 
 # ----------------------------------------------------------------------
-# *** YOU MUST COMPLETE : Add indicated regexs ***
-#
 # Error handling.  The following error conditions must be handled by
 # your lexer.
 
@@ -256,15 +246,15 @@ def t_error(t):
 
 # Unterminated C-style comment
 def t_COMMENT_UNTERM(t):
-    r'regex for an unterminated comment'
+    r'(/\*).*(?<!\*/)'
     error(t.lexer.lineno,"Unterminated comment")
 
 # Unterminated string literal
 def t_STRING_UNTERM(t):
-    r'regex for an unterminated string literal'
+    r'".*(?<!")'
     error(t.lexer.lineno,"Unterminated string literal")
     t.lexer.lineno += 1
-    
+
 # ----------------------------------------------------------------------
 #                DO NOT CHANGE ANYTHING BELOW THIS PART
 # ----------------------------------------------------------------------
@@ -277,12 +267,12 @@ def make_lexer():
 def main():
     import sys
     from errors import subscribe_errors
-    
+
     if len(sys.argv) != 2:
         sys.stderr.write("Usage: %s filename\n" % sys.argv[0])
         raise SystemExit(1)
 
-    
+
     lexer = make_lexer()
     with subscribe_errors(lambda msg: sys.stderr.write(msg+"\n")):
         lexer.input(open(sys.argv[1]).read())
