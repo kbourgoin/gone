@@ -97,42 +97,9 @@ from goneast import *
 precedence = (
 )
 
-# ----------------------------------------------------------------------
-# YOUR TASK.   Translate the BNF in the doc string above into a collection
-# of parser functions.  For example, a rule such as :
-#
-#   program : statements
-#
-# Gets turned into a Python function of the form:
-#
-# def p_program(p):
-#      '''
-#      program : statements
-#      '''
-#      p[0] = Program(p[1])
-#
-# For symbols such as '(' or '+', you'll need to replace with the name
-# of the corresponding token such as LPAREN or PLUS.
-#
-# In the body of each rule, create an appropriate AST node and assign it
-# to p[0] as shown above.
-#
-# For the purposes of lineno number tracking, you should assign a line number
-# to each AST node as appropriate.  To do this, I suggest pulling the
-# line number off of any nearby terminal symbol.  For example:
-#
-# def p_print_statement(p):
-#     '''
-#     print_statement: PRINT expr SEMI
-#     '''
-#     p[0] = PrintStatement(p[2],lineno=p.lineno(1))
-#
-#
-
-# STARTING OUT
-# ============
-# The following grammar rules should give you an idea of how to start.
-# Try running this file on the input Tests/parsetest0.e
+##
+## Program, Statement, and Statement List
+##
 
 def p_program(p):
     '''program : statements
@@ -159,6 +126,10 @@ def p_statement(p):
               |  var_declaration
     '''
     p[0] = p[1]
+
+##
+## Statement Types
+##
 
 def p_const_declaration(p):
     '''
@@ -193,6 +164,27 @@ def p_extern_declaration(p):
     extern_declaration : EXTERN func_prototype SEMI
     '''
     p[0] = ExternDeclaration(p[2])
+
+##
+## Expressions and Expression Lists
+##
+
+def p_exprlist_first(p):
+    '''
+    exprlist : expression
+             | empty
+    '''
+    if p[1] is None:
+        p[0] = []
+    else:
+        p[0] = [p[1]]
+
+def p_exprlist(p):
+    '''
+    exprlist : exprlist COMMA expression
+    '''
+    p[0] = p[1]
+    p[0].append(p[3])
 
 def p_expression_literal(p):
     '''
@@ -234,22 +226,9 @@ def p_expression_func(p):
     '''
     p[0] = FunctionCall(p[1], p[3])
 
-def p_exprlist_first(p):
-    '''
-    exprlist : expression
-             | empty
-    '''
-    if p[1] is None:
-        p[0] = []
-    else:
-        p[0] = [p[1]]
-
-def p_exprlist(p):
-    '''
-    exprlist : exprlist COMMA expression
-    '''
-    p[0] = p[1]
-    p[0].append(p[3])
+##
+## Functions and Parameters
+##
 
 def p_func_prototype(p):
     '''
@@ -281,6 +260,10 @@ def p_parameter(p):
     p[0] = Parameter(p[1], p[2])
 
 
+##
+## Terminal Nodes (literal, typename, etc)
+##
+
 def p_literal(p):
     '''
     literal : INTEGER
@@ -306,10 +289,6 @@ def p_empty(p):
     empty :
     '''
     p[0] = None
-
-
-# You need to implement the rest of the grammar rules here
-
 
 
 # ----------------------------------------------------------------------
