@@ -29,9 +29,9 @@ class AST(object):
 
     def __repr__(self):
         vals = []
-        for f in self._fields:
-            if not isinstance(getattr(self, f), list) and not isinstance(getattr(self, f), AST):
-                vals.append('{}={}'.format(f, getattr(self, f)))
+        for k,v in self.__dict__.items():
+            if not isinstance(v, list) and not isinstance(v, AST) and k != 'lineno':
+                vals.append('{}={}'.format(k, v))
         if vals:
             return '{} {}'.format(self.__class__.__name__, vals)
         else:
@@ -57,7 +57,7 @@ class Expression(AST):
     pass
 
 class Location(AST):
-    pass
+    _fields = ['name']
 
 class Statement(AST):
     pass
@@ -104,14 +104,14 @@ class FunctionPrototype(AST):
 class Literal(AST):
     _fields = ['value']
 
-class LoadVariable(AST):
-    _fields = ['id']
+class LoadLocation(Location):
+    _fields = ['name']
 
 class Parameter(AST):
-    _fields = ['name', 'type']
+    _fields = ['name', 'typename']
 
 class PrintStatement(AST):
-    _fields = ['expr']
+    _fields = ['expression']
 
 class Program(AST):
     _fields = ['statements']
@@ -122,16 +122,16 @@ class Statements(AST):
 class Statement(AST):
     _fields = ['declaration']
 
-class StoreVariable(AST):
-    _fields = ['id']
+class StoreLocation(Location):
+    _fields = ['name']
 
 class Typename(AST):
-    _fields = ['id']
+    _fields = ['name']
 
 class UnaryOp(AST):
-    _fields = ['op', 'target']
+    _fields = ['op', 'operand']
 
-class Var(AST):
+class VarDeclaration(AST):
     _fields = ['name', 'typename', 'expression']
 
 # ----------------------------------------------------------------------
@@ -172,6 +172,7 @@ class NodeVisitor(object):
         if node:
             method = 'visit_' + node.__class__.__name__
             visitor = getattr(self, method, self.generic_visit)
+            print('calling: {} with {} on line {}'.format(visitor.__name__, node, node.lineno))
             return visitor(node)
         else:
             return None

@@ -83,11 +83,14 @@ For walking the AST, use the NodeVisitor class defined in goneast.py.
 A shell of the code is provided below.
 '''
 
-from errors import error
-from goneast import *
+from collections import ChainMap
+
 import gonetype
 
-class SymbolTable(object):
+from errors import error
+from goneast import *
+
+class SymbolTable(ChainMap):
     '''
     Class representing a symbol table.  It should provide functionality
     for adding and looking up nodes associated with identifiers.
@@ -104,63 +107,141 @@ class CheckProgramVisitor(NodeVisitor):
     picked different names.
     '''
     def __init__(self):
-        # Initialize the symbol table
-        pass
+        self.symtab = SymbolTable({
+            'int': gonetype.int_type,
+            'float': gonetype.float_type,
+            'string': gonetype.string_type,
+        })
 
-        # Add built-in type names (int, float, string) to the symbol table
-        pass
+    def visit_Program(self, node):
+        self.visit(node.statements)
+        # TODO: Record Symbol Table?
+        from pprint import pprint
+        pprint(self.symtab.maps)
 
-    def visit_Program(self,node):
-        # 1. Visit all of the statements
-        # 2. Record the associated symbol table
-        pass
+    def visit_Statements(self, node):
+        for s in node.statement_list:
+            self.visit(s)
 
-    def visit_Unaryop(self,node):
-        # 1. Make sure that the operation is supported by the type
-        # 2. Set the result type to the same as the operand
-        pass
+    def visit_PrintStatement(self, node):
+        self.visit(node.expression)
+        self.type = node.expression.type
 
-    def visit_Binop(self,node):
-        # 1. Make sure left and right operands have the same type
-        # 2. Make sure the operation is supported
-        # 3. Assign the result type
-        pass
+    def visit_UnaryOp(self, node):
+        self.visit(node.operand)
 
-    def visit_AssignmentStatement(self,node):
-        # 1. Make sure the location of the assignment is defined
-        # 2. Check that assignment is allowed
-        # 3. Check that the types match
-        pass
+        is_valid, ret_type = node.operand.type.validate_unaop(node.op)
+        if not is_valid:
+            error(node.lineno, 'Unsupported operation: {} {}'.format(
+                  node.op, node.operand.type.name))
+        else:
+            node.type = ret_type
 
-    def visit_ConstDeclaration(self,node):
-        # 1. Check that the constant name is not already defined
-        # 2. Add an entry to the symbol table
-        pass
+    def visit_BinaryOp(self, node):
+        self.visit(node.left)
+        self.visit(node.right)
+        is_valid, ret_type = node.left.type.validate_binop(node.op, node.right.type)
+        if not is_valid:
+            error(node.lineno, 'Unsupported operation: {} {} {}'.format(
+                  node.left.type.name, node.op, node.right.type.name))
+        else:
+            node.type = ret_type
 
-    def visit_VarDeclaration(self,node):
-        # 1. Check that the variable name is not already defined
-        # 2. Add an entry to the symbol table
-        # 3. Check that the type of the expression (if any) is the same
-        # 4. If there is no expression, set an initial value for the value
-        pass
+    def visit_ExternDeclaration(self, node):
+        self.visit(node.func_prototype)
+        node.type = node.func_prototype.type
 
-    def visit_Typename(self,node):
-        # 1. Make sure the typename is valid and that it's actually a type
-        pass
+    def visit_FunctionPrototype(self, node):
+        sym = self.symtab.get(node.name)
+        if sym is not None:
+            error(node.lineno, "{} is already defined".format(node.name))
+        else:
+            for p in node.parameters:
+                self.visit(p)
+            self.visit(node.output_typename)
+            node.type = node.output_typename.type
+            self.symtab[node.name] = node
 
-    def visit_Location(self,node):
-        # 1. Make sure the location is a valid variable or constant value
-        # 2. Assign the type of the location to the node
-        pass
+    def visit_Parameter(self, node):
+        self.visit(node.typename)
+        node.type = node.typename.type
 
-    def visit_LoadLocation(self,node):
-        # 1. Make sure the loaded location is valid.
-        # 2. Assign the appropriate type
-        pass
+    def visit_FunctionCall(self, node):
+        for p in node.parameters:
+            self.visit(p)
 
-    def visit_Literal(self,node):
-        # Attach an appropriate type to the literal
-        pass
+        sym = self.symtab.get(node.name)
+        if sym is None:
+            error('{} is not defined'.format(node.name))
+        else:
+            node.type = sym.type
+
+    def visit_AssignStatement(self, node):
+        self.visit(node.location)
+        self.visit(node.expression)
+
+        if node.location.name not in self.symtab:
+            error(node.lineno, 'Name is not defined: {}'.format(node.location.name))
+        elif isinstance(self.symtab[node.location.name], ConstDeclaration):
+            error(node.lineno, '{} is a constant.'.format(node.location.name))
+        elif node.location.type != node.expression.type:
+            error(node.lineno, '{} is not type {}'.format(node.location.name, node.expression.type))
+        else:
+            node.type = node.expression.type
+
+    def visit_ConstDeclaration(self, node):
+        self.visit(node.expression)
+
+        # Make sure we aren't in the symtab already
+        if node.name in self.symtab:
+            error(node.lineno, '{} is already defined'.format(node.name))
+        else:
+            self.symtab[node.name] = node.expression
+
+    def visit_VarDeclaration(self, node):
+        self.visit(node.typename)
+        self.visit(node.expression)
+
+        if node.name in self.symtab:
+            error(node.lineno, '{} is already defined'.format(node.name))
+        elif node.expression:
+            if node.expression.type != node.typename.type:
+                error(node.lineno, '{} is not type {}'.format(node.name, node.typename.name))
+            else:
+                node.type = node.expression.type
+                self.symtab[node.name] = node.expression
+        else: # no expression -- use default (?)
+            sym = Literal(node.typename.type.default)
+            sym.type = node.typename.type
+            self.symtab[node.name] = sym
+            sym.unassigned = True
+
+    def visit_Typename(self, node):
+        if not isinstance(self.symtab.get(node.name), gonetype.GoneType):
+            error(node.lineno, 'Undefined type: {}'.format(node.name))
+        else:
+            node.type = self.symtab[node.name]
+
+    def visit_LoadLocation(self, node):
+        sym = self.symtab.get(node.name)
+        if sym is None:
+            error(node.lineno, '{} is not defined.'.format(node.name))
+        elif isinstance(sym, VarDeclaration) and not sym.assigned:
+            error(node.lineno, '{} accessed beore assignment'.format(sym.name))
+        else:
+            node.type = sym.type
+
+    def visit_StoreLocation(self, node):
+        sym = self.symtab.get(node.name)
+        if sym is None:
+            error(node.lineno, '{} is not defined.'.format(node.name))
+        else:
+            node.type = sym.type
+            sym.assigned = True
+
+    def visit_Literal(self, node):
+        node.type = gonetype.get_type(node.value)
+
 
 # ----------------------------------------------------------------------
 #                       DO NOT MODIFY ANYTHING BELOW

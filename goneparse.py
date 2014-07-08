@@ -152,15 +152,16 @@ def p_var_declaration(p):
                     | VAR ID typename ASSIGN expression SEMI
     '''
     if len(p) == 5:
-        p[0] = Var(p[2], p[3], None, lineno=p.lineno(1))
+        p[0] = VarDeclaration(p[2], p[3], None, lineno=p.lineno(1))
     else:
-        p[0] = Var(p[2], p[3], p[5], lineno=p.lineno(1))
+        p[0] = VarDeclaration(p[2], p[3], p[5], lineno=p.lineno(1))
 
 def p_assign_statement(p):
     '''
     assign_statement : location ASSIGN expression SEMI
     '''
-    p[0] = AssignStatement(StoreVariable(p[1]), p[3], lineno=p.lineno(2))
+    store_loc = StoreLocation(p[1].name, lineno=p[1].lineno)
+    p[0] = AssignStatement(store_loc, p[3], lineno=p.lineno(2))
 
 def p_extern_declaration(p):
     '''
@@ -199,7 +200,7 @@ def p_expression_location(p):
     '''
     expression : location
     '''
-    p[0] = LoadVariable(p[1], lineno=p.lineno(1))
+    p[0] = LoadLocation(p[1].name, lineno=p[1].lineno)
 
 def p_expression_binaryop(p):
     '''
@@ -279,8 +280,8 @@ def p_location(p):
     '''
     location : ID
     '''
-    # Can be either LoadVariable or StoreVariable, so just return the ID now
-    p[0] = p[1]
+    # Can be either LoadLocation or StoreLocation, so just return the ID now
+    p[0] = Location(p[1], lineno=p.lineno(1))
 
 def p_typename(p):
     '''

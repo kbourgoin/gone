@@ -220,7 +220,7 @@ def t_ID(t):
 # One or more blank lines
 def t_newline(t):
     r'[\r\n]+'
-    t.lexer.lineno += len(t.value)
+    t.lexer.lineno += t.value.count('\n')
 
 # C-style comment (/* ... */)
 def t_COMMENT(t):
@@ -231,7 +231,7 @@ def t_COMMENT(t):
 
 # C++-style comment (//...)
 def t_CPPCOMMENT(t):
-    r'//.*'
+    r'//.*\n'
     t.lexer.lineno += 1
 
 # ----------------------------------------------------------------------
