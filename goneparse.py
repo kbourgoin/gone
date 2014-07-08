@@ -95,6 +95,9 @@ from goneast import *
 # See http://www.dabeaz.com/ply/ply.html#ply_nn27
 
 precedence = (
+    ('left', 'PLUS', 'MINUS'),
+    ('left', 'TIMES', 'DIVIDE'),
+    ('right', 'UNARY'),           # High precedence for unary ops
 )
 
 ##
@@ -209,8 +212,8 @@ def p_expression_binaryop(p):
 
 def p_expression_unaryop(p):
     '''
-    expression : PLUS expression
-               | MINUS expression
+    expression : PLUS expression %prec UNARY
+               | MINUS expression %prec UNARY
     '''
     p[0] = UnaryOp(p[1], p[2])
 

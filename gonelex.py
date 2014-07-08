@@ -30,7 +30,6 @@ Reserved Keywords:
     CONST   : 'const'
     VAR     : 'var'
     PRINT   : 'print'
-    LEN     : 'len'
     FUNC    : 'func'
     EXTERN  : 'extern'
 
@@ -110,7 +109,7 @@ from ply.lex import lex
 
 tokens = [
     # keywords
-    'ID', 'CONST', 'VAR', 'LEN', 'PRINT', 'FUNC', 'EXTERN',
+    'ID', 'CONST', 'VAR', 'PRINT', 'FUNC', 'EXTERN',
 
     # Operators and delimiters
     'PLUS', 'MINUS', 'TIMES', 'DIVIDE',
