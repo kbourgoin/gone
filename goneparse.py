@@ -108,7 +108,7 @@ def p_program(p):
     '''program : statements
                | empty
     '''
-    p[0] = Program(p[1])
+    p[0] = Program(p[1], lineno=p.lineno(1))
 
 def p_statements(p):
     '''statements :  statements statement
@@ -118,7 +118,7 @@ def p_statements(p):
         p[0] = p[1]
         p[0].statement_list.append(p[2])
     else:
-        p[0] = Statements([p[1]])
+        p[0] = Statements([p[1]], lineno=p.lineno(1))
 
 def p_statement(p):
     '''
@@ -138,13 +138,13 @@ def p_const_declaration(p):
     '''
     const_declaration : CONST ID ASSIGN expression SEMI
     '''
-    p[0] = ConstDeclaration(p[2], p[4])
+    p[0] = ConstDeclaration(p[2], p[4], lineno=p.lineno(1))
 
 def p_print_statement(p):
     '''
     print_statement : PRINT expression SEMI
     '''
-    p[0] = PrintStatement(p[2])
+    p[0] = PrintStatement(p[2], lineno=p.lineno(1))
 
 def p_var_declaration(p):
     '''
@@ -152,21 +152,21 @@ def p_var_declaration(p):
                     | VAR ID typename ASSIGN expression SEMI
     '''
     if len(p) == 5:
-        p[0] = Var(p[2], p[3], None)
+        p[0] = Var(p[2], p[3], None, lineno=p.lineno(1))
     else:
-        p[0] = Var(p[2], p[3], p[5])
+        p[0] = Var(p[2], p[3], p[5], lineno=p.lineno(1))
 
 def p_assign_statement(p):
     '''
     assign_statement : location ASSIGN expression SEMI
     '''
-    p[0] = AssignStatement(StoreVariable(p[1]), p[3])
+    p[0] = AssignStatement(StoreVariable(p[1]), p[3], lineno=p.lineno(2))
 
 def p_extern_declaration(p):
     '''
     extern_declaration : EXTERN func_prototype SEMI
     '''
-    p[0] = ExternDeclaration(p[2])
+    p[0] = ExternDeclaration(p[2], lineno=p.lineno(1))
 
 ##
 ## Expressions and Expression Lists
@@ -199,7 +199,7 @@ def p_expression_location(p):
     '''
     expression : location
     '''
-    p[0] = LoadVariable(p[1])
+    p[0] = LoadVariable(p[1], lineno=p.lineno(1))
 
 def p_expression_binaryop(p):
     '''
@@ -208,14 +208,14 @@ def p_expression_binaryop(p):
                | expression TIMES expression
                | expression DIVIDE expression
     '''
-    p[0] = BinaryOp(p[2], p[1], p[3])
+    p[0] = BinaryOp(p[2], p[1], p[3], lineno=p.lineno(2))
 
 def p_expression_unaryop(p):
     '''
     expression : PLUS expression %prec UNARY
                | MINUS expression %prec UNARY
     '''
-    p[0] = UnaryOp(p[1], p[2])
+    p[0] = UnaryOp(p[1], p[2], lineno=p.lineno(1))
 
 def p_epxression_parens(p):
     '''
@@ -227,7 +227,7 @@ def p_expression_func(p):
     '''
     expression : ID LPAREN exprlist RPAREN
     '''
-    p[0] = FunctionCall(p[1], p[3])
+    p[0] = FunctionCall(p[1], p[3], lineno=p.lineno(1))
 
 ##
 ## Functions and Parameters
@@ -237,7 +237,7 @@ def p_func_prototype(p):
     '''
     func_prototype : FUNC ID LPAREN parameters RPAREN typename
     '''
-    p[0] = FunctionPrototype(p[2], p[4], p[6])
+    p[0] = FunctionPrototype(p[2], p[4], p[6], lineno=p.lineno(2))
 
 def p_parameters_first(p):
     '''
@@ -260,7 +260,7 @@ def p_parameter(p):
     '''
     parm_declaration : ID typename
     '''
-    p[0] = Parameter(p[1], p[2])
+    p[0] = Parameter(p[1], p[2], lineno=p.lineno(1))
 
 
 ##
@@ -273,7 +273,7 @@ def p_literal(p):
             | FLOAT
             | STRING
     '''
-    p[0] = Literal(p[1],lineno=p.lineno(1))
+    p[0] = Literal(p[1], lineno=p.lineno(1))
 
 def p_location(p):
     '''
@@ -286,7 +286,7 @@ def p_typename(p):
     '''
     typename : ID
     '''
-    p[0] = Typename(p[1])
+    p[0] = Typename(p[1], lineno=p.lineno(1))
 
 def p_empty(p):
     '''
