@@ -157,7 +157,7 @@ def p_assign_statement(p):
     '''
     assign_statement : location ASSIGN expression SEMI
     '''
-    p[0] = AssignStatement(p[1], p[3])
+    p[0] = AssignStatement(StoreVariable(p[1]), p[3])
 
 def p_extern_declaration(p):
     '''
@@ -196,7 +196,7 @@ def p_expression_location(p):
     '''
     expression : location
     '''
-    p[0] = p[1]
+    p[0] = LoadVariable(p[1])
 
 def p_expression_binaryop(p):
     '''
@@ -276,7 +276,8 @@ def p_location(p):
     '''
     location : ID
     '''
-    p[0] = Location(p[1])
+    # Can be either LoadVariable or StoreVariable, so just return the ID now
+    p[0] = p[1]
 
 def p_typename(p):
     '''

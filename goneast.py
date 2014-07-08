@@ -70,7 +70,7 @@ class FunctionPrototype(AST):
 class Literal(AST):
     _fields = ['value']
 
-class Location(AST):
+class LoadVariable(AST):
     _fields = ['id']
 
 class Parameter(AST):
@@ -87,6 +87,9 @@ class Statements(AST):
 
 class Statement(AST):
     _fields = ['declaration']
+
+class StoreVariable(AST):
+    _fields = ['id']
 
 class Typename(AST):
     _fields = ['id']
