@@ -172,7 +172,7 @@ class NodeVisitor(object):
         if node:
             method = 'visit_' + node.__class__.__name__
             visitor = getattr(self, method, self.generic_visit)
-            print('calling: {} with {} on line {}'.format(visitor.__name__, node, node.lineno))
+            #print('calling: {} with {} on line {}'.format(visitor.__name__, node, node.lineno))
             return visitor(node)
         else:
             return None
