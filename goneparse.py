@@ -138,7 +138,7 @@ def p_const_declaration(p):
     '''
     const_declaration : CONST ID ASSIGN expression SEMI
     '''
-    p[0] = Const(p[2], p[4])
+    p[0] = ConstDeclaration(p[2], p[4])
 
 def p_print_statement(p):
     '''

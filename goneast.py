@@ -49,13 +49,47 @@ class AST(object):
 #        _fields = ['op','left','right']
 # ----------------------------------------------------------------------
 
+##
+## Decorator stuff for later fun
+##
+
+class Expression(AST):
+    pass
+
+class Location(AST):
+    pass
+
+class Statement(AST):
+    pass
+
+def require(**types):
+    def decorate(cls):
+        print(cls.__init__)
+        init = cls.__init__
+        def __init__(self, *args, **kwargs):
+            init(self, *args, **kwargs)
+            for name, type_ in types.items():
+                if isinstance(type_, list):
+                    assert all(isinstance(i, type_) for i in getattr(self, name)), \
+                           '{} must be all of type {}'.format(name, type_)
+                elif isinstance(type_, tuple):
+                    assert type(getattr(self, name)) in type_, \
+                           '{} type must be one of {}'.format(name, type_.__name__)
+                else:
+                    assert type(getattr(self, name)) == type_, \
+                           '{} must be {}'.format(name, type_.__name__)
+        setattr(cls, '__init__', __init__)
+        return cls
+    return decorate
+
+#@require(location=Location, expression=Expression)
 class AssignStatement(AST):
     _fields = ['location', 'expression']
 
 class BinaryOp(AST):
     _fields = ['op', 'left', 'right']
 
-class Const(AST):
+class ConstDeclaration(AST):
     _fields = ['name', 'expression']
 
 class ExternDeclaration(AST):
