@@ -44,7 +44,7 @@ class GoneType(object):
             return self.__class__.__name__
 
     def check_binop(self, op, left, right):
-        op_fn = getattr(self, opmap.get(op), None)
+        op_fn = getattr(self, binary_ops.get(op), None)
         if op_fn is None:
             return ErrorType
         params = op_fn.__annotations__
@@ -54,7 +54,7 @@ class GoneType(object):
         return typemap[params['return']]
 
     def check_unaop(self, op):
-        op_fn = getattr(self, opmap.get('u' + op), None)
+        op_fn = getattr(self, unary_ops.get(op), None)
         if op_fn is None:
             return ErrorType
         params = op_fn.__annotations__
@@ -124,13 +124,17 @@ class _ErrorType(GoneType):
 ErrorType = _ErrorType()
 
 
-opmap = {'+': 'add',
-         '-': 'sub',
-         '*': 'mul',
-         '/': 'div',
-         'u+': 'uadd',
-         'u-': 'usub',
-         }
+binary_ops = {
+    '+' : 'add',
+    '-' : 'sub',
+    '*' : 'mul',
+    '/' : 'div',
+}
+
+unary_ops = {
+    '+' : 'uadd',
+    '-' : 'usub',
+}
 typemap = {'int': IntType,
            'float': FloatType,
            'str': StringType,
