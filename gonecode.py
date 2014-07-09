@@ -231,16 +231,20 @@ class GenerateCode(goneast.NodeVisitor):
     def visit_UnaryOp(self, node):
         self.visit(node.operand)
 
-        # Make a new temporary for storing the result
-        target = self.new_temp(node.type)
+        if node.op == '+':
+            # this is ultimately a no-op
+            node.gen_location = node.operand.gen_location
+        else:
+            # Make a new temporary for storing the result
+            target = self.new_temp(node.type)
 
-        # Create the opcode and append to list
-        opcode = unary_ops[node.op] + "_"+node.operand.type.name
-        inst = (opcode, node.operand.gen_location, target)
-        self.code.append(inst)
+            # Create the opcode and append to list
+            opcode = unary_ops[node.op] + "_"+node.operand.type.name
+            inst = (opcode, node.operand.gen_location, target)
+            self.code.append(inst)
 
-        # Store location of the result on the node
-        node.gen_location = target
+            # Store location of the result on the node
+            node.gen_location = target
 
     def visit_BinaryOp(self,node):
         self.visit(node.left)
