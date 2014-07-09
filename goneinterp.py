@@ -127,6 +127,33 @@ class Interpreter(object):
         '''
         print(self.vars[source])
 
+    def run_eq(self, left, right, target):
+        self.vars[target] = self.vars[left] == self.vars[right]
+
+    def run_neq(self, left, right, target):
+        self.vars[target] = self.vars[left] != self.vars[right]
+
+    def run_gt(self, left, right, target):
+        self.vars[target] = self.vars[left] > self.vars[right]
+
+    def run_gte(self, left, right, target):
+        self.vars[target] = self.vars[left] > self.vars[right]
+
+    def run_lt(self, left, right, target):
+        self.vars[target] = self.vars[left] < self.vars[right]
+
+    def run_lte(self, left, right, target):
+        self.vars[target] = self.vars[left] <= self.vars[right]
+
+    def run_or(self, left, right, target):
+        self.vars[target] = self.vars[left] or self.vars[right]
+
+    def run_and(self, left, right, target):
+        self.vars[target] = self.vars[left] and self.vars[right]
+
+    def run_not(self, source, target):
+        self.vars[target] = not self.vars[source]
+
 
     # You must implement the rest of the operations below
 

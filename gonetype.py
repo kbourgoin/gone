@@ -61,31 +61,50 @@ class GoneType(object):
         return typemap[params['return']]
 
     def check_type(self, python_var):
+        if self.pytype == int and (python_var is True or python_var is False):
+            return False # wtf
         return isinstance(python_var, self.pytype)
-
 
 class _IntType(GoneType):
     default = 0
     name = 'int'
     pytype = int
 
-    def add(self, left: 'int', right: 'int') -> 'int':
+    def add_op(self, left: 'int', right: 'int') -> 'int':
         pass # todo: codegen
 
-    def sub(self, left: 'int', right: 'int') -> 'int':
+    def sub_op(self, left: 'int', right: 'int') -> 'int':
         pass # todo: codegen
 
-    def mul(self, left: 'int', right: 'int') -> 'int':
+    def mul_op(self, left: 'int', right: 'int') -> 'int':
         pass # todo: codegen
 
-    def div(self, left: 'int', right: 'int') -> 'int':
+    def div_op(self, left: 'int', right: 'int') -> 'int':
         pass # todo: codegen
 
-    def uadd(self) -> 'int':
+    def uadd_op(self) -> 'int':
         pass # todo: codegen
 
-    def usub(self) -> 'int':
+    def usub_op(self) -> 'int':
         pass # todo: codegen
+
+    def eq_op(self, left: 'int', right: 'int') -> 'bool':
+        pass
+
+    def neq_op(self, left: 'int', right: 'int') -> 'bool':
+        pass
+
+    def lt_op(self, left: 'int', right: 'int') -> 'bool':
+        pass
+
+    def lte_op(self, left: 'int', right: 'int') -> 'bool':
+        pass
+
+    def gt_op(self, left: 'int', right: 'int') -> 'bool':
+        pass
+
+    def gte_op(self, left: 'int', right: 'int') -> 'bool':
+        pass
 IntType = _IntType() # need to instantiate so we can isinstance()
 
 class _FloatType(GoneType):
@@ -93,34 +112,108 @@ class _FloatType(GoneType):
     name = 'float'
     pytype = float
 
-    def add(self, left: 'float', right: 'float') -> 'float':
+    def add_op(self, left: 'float', right: 'float') -> 'float':
         pass # todo: codegen
 
-    def sub(self, left: 'float', right: 'float') -> 'float':
+    def sub_op(self, left: 'float', right: 'float') -> 'float':
         pass # todo: codegen
 
-    def mul(self, left: 'float', right: 'float') -> 'float':
+    def mul_op(self, left: 'float', right: 'float') -> 'float':
         pass # todo: codegen
 
-    def div(self, left: 'float', right: 'float') -> 'float':
+    def div_op(self, left: 'float', right: 'float') -> 'float':
         pass # todo: codegen
 
-    def uadd(self) -> 'float':
+    def uadd_op(self) -> 'float':
         pass # todo: codegen
 
-    def usub(self) -> 'float':
+    def usub_op(self) -> 'float':
         pass # todo: codegen
+
+    def eq_op(self, left: 'float', right: 'float') -> 'bool':
+        pass
+
+    def neq_op(self, left: 'float', right: 'float') -> 'bool':
+        pass
+
+    def lt_op(self, left: 'float', right: 'float') -> 'bool':
+        pass
+
+    def lte_op(self, left: 'float', right: 'float') -> 'bool':
+        pass
+
+    def gt_op(self, left: 'float', right: 'float') -> 'bool':
+        pass
+
+    def gte_op(self, left: 'float', right: 'float') -> 'bool':
+        pass
 FloatType = _FloatType() # need to instantiate so we can isinstance()
-
 
 class _StringType(GoneType):
     default = ''
     name = 'string'
     pytype = str
 
-    def add(self, left: 'str', right: 'str') -> 'str':
+    def add_op(self, left: 'str', right: 'str') -> 'str':
         pass # todo: codegen
+
+    def eq_op(self, left: 'str', right: 'str') -> 'bool':
+        pass
+
+    def neq_op(self, left: 'str', right: 'str') -> 'bool':
+        pass
+
+    def and_op(self, left: 'str', right: 'str') -> 'bool':
+        pass
+
+    def or_op(self, left: 'str', right: 'str') -> 'bool':
+        pass
+
+    def lt_op(self, left: 'str', right: 'str') -> 'bool':
+        pass
+
+    def lte_op(self, left: 'str', right: 'str') -> 'bool':
+        pass
+
+    def gt_op(self, left: 'str', right: 'str') -> 'bool':
+        pass
+
+    def gte_op(self, left: 'str', right: 'str') -> 'bool':
+        pass
 StringType = _StringType() # need to instantiate so we can isinstance()
+
+class _BoolType(GoneType):
+    default = False
+    name = 'bool'
+    pytype = bool
+
+    def eq_op(self, left: 'bool', right: 'bool') -> 'bool':
+        pass
+
+    def neq_op(self, left: 'bool', right: 'bool') -> 'bool':
+        pass
+
+    def and_op(self, left: 'bool', right: 'bool') -> 'bool':
+        pass
+
+    def or_op(self, left: 'bool', right: 'bool') -> 'bool':
+        pass
+
+    def lt_op(self, left: 'bool', right: 'bool') -> 'bool':
+        pass
+
+    def lte_op(self, left: 'bool', right: 'bool') -> 'bool':
+        pass
+
+    def gt_op(self, left: 'bool', right: 'bool') -> 'bool':
+        pass
+
+    def gte_op(self, left: 'bool', right: 'bool') -> 'bool':
+        pass
+
+    def not_op(self, left: 'bool', right: 'bool') -> 'bool':
+        pass
+BoolType = _BoolType() # need to instantiate so we can isinstance()
 
 class _ErrorType(GoneType):
     pass
@@ -128,19 +221,29 @@ ErrorType = _ErrorType()
 
 
 binary_ops = {
-    '+' : 'add',
-    '-' : 'sub',
-    '*' : 'mul',
-    '/' : 'div',
+    '+' : 'add_op',
+    '-' : 'sub_op',
+    '*' : 'mul_op',
+    '/' : 'div_op',
+    '==' : 'eq_op',
+    '!=' : 'neq_op',
+    '<' : 'lt_op',
+    '<=' : 'lte_op',
+    '>' : 'gt_op',
+    '>=' : 'gte_op',
+    '||' : 'or_op',
+    '&&' : 'and_op',
 }
 
 unary_ops = {
-    '+' : 'uadd',
-    '-' : 'usub',
+    '+' : 'uadd_op',
+    '-' : 'usub_op',
+    '!' : 'not_op',
 }
 typemap = {'int': IntType,
            'float': FloatType,
            'str': StringType,
+           'bool': BoolType,
            }
 
 
@@ -149,4 +252,4 @@ def get_type(python_var):
     for gtype in typemap.values():
         if gtype.check_type(python_var):
             return gtype
-    raise Exception("Unable to match type to {}", type(python_var))
+    raise Exception("Unable to match type: {}".format(python_var))

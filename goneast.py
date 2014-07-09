@@ -31,11 +31,13 @@ class AST(object):
         vals = []
         for k,v in self.__dict__.items():
             if not isinstance(v, list) and not isinstance(v, AST) and k != 'lineno':
-                vals.append('{}={}'.format(k, v))
+                vals.append((k,v))
+        lineno = getattr(self, 'lineno', None)
+        l = '({}) '.format(lineno) if lineno else ''
         if vals:
-            return '{} {}'.format(self.__class__.__name__, vals)
+            return '{}{} {}'.format(l, self.__class__.__name__, vals)
         else:
-            return '{}'.format(self.__class__.__name__)
+            return '{}{}'.format(l, self.__class__.__name__)
 
 # ----------------------------------------------------------------------
 # Specific AST nodes.

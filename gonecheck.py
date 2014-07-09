@@ -111,6 +111,7 @@ class CheckProgramVisitor(NodeVisitor):
             'int': types.IntType,
             'float': types.FloatType,
             'string': types.StringType,
+            'bool': types.BoolType,
         })
 
     def visit_Program(self, node):

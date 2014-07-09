@@ -32,6 +32,8 @@ Reserved Keywords:
     PRINT   : 'print'
     FUNC    : 'func'
     EXTERN  : 'extern'
+    TRUE    : 'true'
+    FALSE   : 'false'
 
 Identifiers:   (Same rules as for Python)
     ID      : Text starting with a letter or '_', followed by any number
@@ -109,12 +111,15 @@ from ply.lex import lex
 
 tokens = [
     # keywords
-    'ID', 'CONST', 'VAR', 'PRINT', 'FUNC', 'EXTERN',
+    'ID', 'CONST', 'VAR', 'PRINT', 'FUNC', 'EXTERN', 'TRUE', 'FALSE',
 
     # Operators and delimiters
     'PLUS', 'MINUS', 'TIMES', 'DIVIDE',
     'ASSIGN', 'SEMI', 'LPAREN', 'RPAREN',
     'COMMA',
+
+    # Boolean operators
+    'LT', 'LTE', 'GT', 'GTE', 'EQ', 'NEQ', 'NOT', 'OR', 'AND',
 
     # Literals
     'INTEGER', 'FLOAT', 'STRING',
@@ -135,11 +140,21 @@ t_PLUS      = r'\+'
 t_MINUS     = r'-'
 t_TIMES     = r'\*'
 t_DIVIDE    = r'/'
-t_ASSIGN    = r'='
 t_SEMI      = r';'
 t_LPAREN    = r'\('
 t_RPAREN    = r'\)'
 t_COMMA     = r','
+
+t_EQ        = r'=='
+t_NEQ       = r'!='
+t_OR        = r'\|\|'
+t_AND       = r'&&'
+t_ASSIGN    = r'='
+t_LTE       = r'<='
+t_LT        = r'<'
+t_GTE       = r'>='
+t_GT        = r'>'
+t_NOT       = r'!'
 
 # ----------------------------------------------------------------------
 # Tokens for literals, INTEGER, FLOAT, STRING.
@@ -209,8 +224,14 @@ def t_ID(t):
                 'print': 'PRINT',
                 'func': 'FUNC',
                 'extern': 'EXTERN',
+                'true': 'TRUE',
+                'false': 'FALSE',
                 }
     t.type = keywords.get(t.value, 'ID')
+    if t.type == 'TRUE':
+        t.value = True
+    elif t.type == 'FALSE':
+        t.value = False
     return t
 
 # ----------------------------------------------------------------------

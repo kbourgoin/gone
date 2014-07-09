@@ -39,10 +39,17 @@ print_statement : PRINT expression ;
 
 expression :  + expression
            |  - expression
+           |  ! expression
            | expression + expression
            | expression - expression
            | expression * expression
            | expression / expression
+           | expression == expression
+           | expression != expression
+           | expression < expression
+           | expression > expression
+           | expression && expression
+           | expression || expression
            | ( expression )
            | ID ( exprlist )
            | location
@@ -55,6 +62,8 @@ exprlist : | exprlist , expression
 literal : INTEGER
         | FLOAT
         | STRING
+        | TRUE
+        | FALSE
 
 location : ID
 
@@ -95,6 +104,9 @@ from goneast import *
 # See http://www.dabeaz.com/ply/ply.html#ply_nn27
 
 precedence = (
+    ('left', 'OR'),
+    ('left', 'AND'),
+    ('nonassoc', 'LT', 'LTE', 'GT', 'GTE', 'EQ', 'NEQ'),  # Nonassociative operators
     ('left', 'PLUS', 'MINUS'),
     ('left', 'TIMES', 'DIVIDE'),
     ('right', 'UNARY'),           # High precedence for unary ops
@@ -208,6 +220,14 @@ def p_expression_binaryop(p):
                | expression MINUS expression
                | expression TIMES expression
                | expression DIVIDE expression
+               | expression EQ expression
+               | expression NEQ expression
+               | expression OR expression
+               | expression AND expression
+               | expression LT expression
+               | expression LTE expression
+               | expression GT expression
+               | expression GTE expression
     '''
     p[0] = BinaryOp(p[2], p[1], p[3], lineno=p.lineno(2))
 
@@ -215,6 +235,7 @@ def p_expression_unaryop(p):
     '''
     expression : PLUS expression %prec UNARY
                | MINUS expression %prec UNARY
+               | NOT expression %prec UNARY
     '''
     p[0] = UnaryOp(p[1], p[2], lineno=p.lineno(1))
 
@@ -273,6 +294,8 @@ def p_literal(p):
     literal : INTEGER
             | FLOAT
             | STRING
+            | TRUE
+            | FALSE
     '''
     p[0] = Literal(p[1], lineno=p.lineno(1))
 

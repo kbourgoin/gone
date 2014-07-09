@@ -174,11 +174,20 @@ binary_ops = {
     '-' : 'sub',
     '*' : 'mul',
     '/' : 'div',
+    '==': 'eq',
+    '!=': 'neq',
+    '<': 'lte',
+    '<=': 'lte',
+    '>': 'gt',
+    '>=': 'gte',
+    '||': 'or',
+    '&&': 'and',
 }
 
 unary_ops = {
     '+' : 'uadd',
-    '-' : 'usub'
+    '-' : 'usub',
+    '!': 'not',
 }
 
 # STEP 2: Implement the following Node Visitor class so that it creates
