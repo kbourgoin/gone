@@ -111,7 +111,8 @@ class Interpreter(object):
                 self.vars[name] = lambda params: fn(*(self.vars[p] for p in params))
                 return
 
-    def run_call_func(self, name, target, *params):
+    def run_call_func(self, name, *params):
+        *params, target = params
         self.vars[target] = self.vars[name](params)
 
     def run_literal(self, value, target):
