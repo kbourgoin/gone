@@ -66,28 +66,66 @@ class Interpreter(object):
             if hasattr(self, "run_"+opcode):
                 getattr(self, "run_"+opcode)(*op[1:])
             else:
-                print("Warning: No run_"+opcode+"() method")
+                # match a bit fuzzier
+                parts = opcode.split('_')
+                if hasattr(self, "run_"+parts[0]):
+                    getattr(self, "run_"+parts[0])(*op[1:])
+                else:
+                    print("Warning: No run_"+opcode+"() method")
 
     # YOU MUST IMPLEMENT:  Methods for different opcodes.  A few sample
     # opcodes are shown below to get you started.
 
-    def run_literal_int(self, value, target):
+
+    def run_add(self, left, right, target):
+        self.vars[target] = self.vars[left] + self.vars[right]
+
+    def run_sub(self, left, right, target):
+        self.vars[target] = self.vars[left] - self.vars[right]
+
+    def run_mul(self, left, right, target):
+        self.vars[target] = self.vars[left] * self.vars[right]
+
+    def run_div(self, left, right, target):
+        self.vars[target] = self.vars[left] / self.vars[right]
+
+    def run_uadd(self, source, target):
+        self.vars[target] = +self.vars[source]
+
+    def run_usub(self, source, target):
+        self.vars[target] = -self.vars[source]
+
+    def run_load(self, source, target):
+        self.vars[target] = self.vars[source]
+
+    def run_store(self, source, target):
+        self.vars[target] = self.vars[source]
+
+    def run_alloc(self, target):
+        self.vars[target] = None
+
+    def run_extern_func(self, name, ret_type, *params):
+        for exlib in self.external_libs:
+            fn = getattr(exlib, name, None)
+            if fn is not None:
+                self.vars[name] = lambda params: fn(*(self.vars[p] for p in params))
+                return
+
+    def run_call_func(self, name, target, *params):
+        self.vars[target] = self.vars[name](params)
+
+    def run_literal(self, value, target):
         '''
         Create a literal integer value
         '''
         self.vars[target] = value
 
-    def run_add_int(self, left, right, target):
-        '''
-        Add two integer varibles
-        '''
-        self.vars[target] = self.vars[left] + self.vars[right]
-
-    def run_print_int(self, source):
+    def run_print(self, source):
         '''
         Output an integer value.
         '''
         print(self.vars[source])
+
 
     # You must implement the rest of the operations below
 

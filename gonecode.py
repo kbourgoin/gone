@@ -276,8 +276,8 @@ class GenerateCode(goneast.NodeVisitor):
             self.visit(p)
         target = self.new_temp(node.type)
         inst = ('call_func',
-                node.fn.name,
-                ) + tuple(p.gen_location for p in node.parameters) + (target,)
+                node.fn.name, target,
+                ) + tuple(p.gen_location for p in node.parameters)
         self.code.append(inst)
         node.gen_location = target
 
