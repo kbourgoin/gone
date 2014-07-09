@@ -36,77 +36,110 @@ class GoneType(object):
     are declared as singleton instances of this type.
     '''
     def __repr__(self):
-        return self.__class__.__name__
+        if hasattr(self, 'pytype'):
+            return str(self.pytype.__name__)
+        elif self.__class__.__name__.startswith('_'):
+            return self.__class__.__name__[1:]
+        else:
+            return self.__class__.__name__
+
+    def check_binop(self, op, left, right):
+        op_fn = getattr(self, opmap.get(op), None)
+        if op_fn is None:
+            return ErrorType
+        params = op_fn.__annotations__
+        if left.type != typemap[params['left']] or \
+           right.type != typemap[params['right']]:
+               return ErrorType
+        return typemap[params['return']]
+
+    def check_unaop(self, op):
+        op_fn = getattr(self, opmap.get('u' + op), None)
+        if op_fn is None:
+            return ErrorType
+        params = op_fn.__annotations__
+        return typemap[params['return']]
 
     def check_type(self, python_var):
         return isinstance(python_var, self.pytype)
 
-    def validate_binop(self, op, other):
-        """Return (valid, ret_type) for the binary operation
 
-        :param op: token name of the operation
-        :param other: type of the other type involved
-        """
-        if op in self.binops and other == self:
-            return True, _types_by_name[self.binops[op]]
-        else:
-            return False, None
-
-    def validate_unaop(self, op):
-        """Return (valid, ret_type) for the unary operation
-
-        :param op: token name of the operation
-        """
-        if op in self.unaops:
-            return True, _types_by_name[self.unaops[op]]
-        else:
-            return False, None
-
-
-class IntType(GoneType):
-    binops = {'+': 'int',
-              '-': 'int',
-              '*': 'int',
-              '/': 'int'}
-    unaops = {'+': 'int',
-              '-': 'int'}
+class _IntType(GoneType):
+    default = 0
     pytype = int
-    name   = 'int'
-    default = None
 
-class FloatType(GoneType):
-    binops = {'+': 'float',
-              '-': 'float',
-              '*': 'float',
-              '/': 'float'}
-    unaops = {'+': 'float',
-              '-': 'float'}
+    def add(self, left: 'int', right: 'int') -> 'int':
+        pass # todo: codegen
+
+    def sub(self, left: 'int', right: 'int') -> 'int':
+        pass # todo: codegen
+
+    def mul(self, left: 'int', right: 'int') -> 'int':
+        pass # todo: codegen
+
+    def div(self, left: 'int', right: 'int') -> 'int':
+        pass # todo: codegen
+
+    def uadd(self) -> 'int':
+        pass # todo: codegen
+
+    def usub(self) -> 'int':
+        pass # todo: codegen
+IntType = _IntType() # need to instantiate so we can isinstance()
+
+class _FloatType(GoneType):
+    default = 0.0
     pytype = float
-    name   = 'float'
-    default = None
 
-class StringType(GoneType):
-    binops = {'+': 'string'}
-    unaops = {}
-    name = 'string'
+    def add(self, left: 'float', right: 'float') -> 'float':
+        pass # todo: codegen
+
+    def sub(self, left: 'float', right: 'float') -> 'float':
+        pass # todo: codegen
+
+    def mul(self, left: 'float', right: 'float') -> 'float':
+        pass # todo: codegen
+
+    def div(self, left: 'float', right: 'float') -> 'float':
+        pass # todo: codegen
+
+    def uadd(self) -> 'float':
+        pass # todo: codegen
+
+    def usub(self) -> 'float':
+        pass # todo: codegen
+FloatType = _FloatType() # need to instantiate so we can isinstance()
+
+
+class _StringType(GoneType):
+    default = ''
     pytype = str
-    default = None
 
-# Create specific instances of types. You will need to add
-# appropriate arguments depending on your definition of GoneType
-int_type = IntType()
-float_type = FloatType()
-string_type = StringType()
+    def add(self, left: 'str', right: 'str') -> 'str':
+        pass # todo: codegen
+StringType = _StringType() # need to instantiate so we can isinstance()
 
-_types_by_name = {
-    'int': int_type,
-    'float': float_type,
-    'string': string_type,
-}
+class _ErrorType(GoneType):
+    pass
+ErrorType = _ErrorType()
+
+
+opmap = {'+': 'add',
+         '-': 'sub',
+         '*': 'mul',
+         '/': 'div',
+         'u+': 'uadd',
+         'u-': 'usub',
+         }
+typemap = {'int': IntType,
+           'float': FloatType,
+           'str': StringType,
+           }
+
 
 def get_type(python_var):
     """Get the GoneType corresponding to the python var's type"""
-    for gtype in _types_by_name.values():
+    for gtype in typemap.values():
         if gtype.check_type(python_var):
             return gtype
     raise Exception("Unable to match type to {}", type(python_var))

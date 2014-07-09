@@ -85,7 +85,7 @@ A shell of the code is provided below.
 
 from collections import ChainMap
 
-import gonetype
+import gonetype as types
 
 from errors import error
 from goneast import *
@@ -108,9 +108,9 @@ class CheckProgramVisitor(NodeVisitor):
     '''
     def __init__(self):
         self.symtab = SymbolTable({
-            'int': gonetype.int_type,
-            'float': gonetype.float_type,
-            'string': gonetype.string_type,
+            'int': types.IntType,
+            'float': types.FloatType,
+            'string': types.StringType,
         })
 
     def visit_Program(self, node):
@@ -130,24 +130,20 @@ class CheckProgramVisitor(NodeVisitor):
     def visit_UnaryOp(self, node):
         self.visit(node.operand)
 
-        is_valid, ret_type = node.operand.type.validate_unaop(node.op)
-        if not is_valid:
+        ret_type = node.operand.type.check_unaop(node.op)
+        if ret_type is types.ErrorType:
             error(node.lineno, 'Unsupported operation: {} {}'.format(
                   node.op, node.operand.type))
-            node.type = TypeError
-        else:
-            node.type = ret_type
+        node.type = ret_type
 
     def visit_BinaryOp(self, node):
         self.visit(node.left)
         self.visit(node.right)
-        is_valid, ret_type = node.left.type.validate_binop(node.op, node.right.type)
-        if not is_valid:
+        ret_type = node.left.type.check_binop(node.op, node.left, node.right)
+        if ret_type is types.ErrorType:
             error(node.lineno, 'Unsupported operation: {} {} {}'.format(
                   node.left.type, node.op, node.right.type))
-            node.type = TypeError
-        else:
-            node.type = ret_type
+        node.type = ret_type
 
     def visit_ExternDeclaration(self, node):
         self.visit(node.func_prototype)
@@ -175,14 +171,14 @@ class CheckProgramVisitor(NodeVisitor):
         sym = self.symtab.get(node.name)
         if sym is None:
             error(node.lineno, '{} is not defined'.format(node.name))
-            node.type = TypeError
+            node.type = types.ErrorType
         elif not isinstance(sym, FunctionPrototype):
             error(node.lineno, '{} is not a function'.format(node.name))
-            node.type = TypeError
+            node.type = types.ErrorType
         elif len(node.parameters) != len(sym.parameters):
             error(node.lineno, '{} expected {} parameters, but got {}'.format(
                 node.name, len(sym.parameters), len(node.parameters)))
-            node.type = TypeError
+            node.type = types.ErrorType
         else:
             func_types = [p.type for p in sym.parameters]
             node_types = [p.type for p in node.parameters]
@@ -190,7 +186,7 @@ class CheckProgramVisitor(NodeVisitor):
                 if func_t != node_t:
                     error(node.lineno,
                           'Argument {}: expected {} but got {}'.format(i+1, func_t, node_t))
-                    node.type = TypeError
+                    node.type = types.ErrorType
             else:
                 node.type = sym.output_typename.type
 
@@ -198,12 +194,12 @@ class CheckProgramVisitor(NodeVisitor):
         self.visit(node.location)
         self.visit(node.expression)
 
-        if node.location.name not in self.symtab:
+        if node.location.type != node.expression.type:
+            error(node.lineno, '{} is not type {}'.format(node.location.name, node.expression.type))
+        elif node.location.name not in self.symtab:
             error(node.lineno, 'Name is not defined: {}'.format(node.location.name))
         elif isinstance(self.symtab[node.location.name], ConstDeclaration):
             error(node.lineno, '{} is a constant.'.format(node.location.name))
-        elif node.location.type != node.expression.type:
-            error(node.lineno, '{} is not type {}'.format(node.location.name, node.expression.type))
         else:
             node.type = node.expression.type
 
@@ -223,10 +219,12 @@ class CheckProgramVisitor(NodeVisitor):
 
         if node.name in self.symtab:
             error(node.lineno, '{} is already defined'.format(node.name))
-        elif node.typename.type == TypeError:
-            node.type = TypeError
+        elif node.typename.type == types.ErrorType:
+            node.type = types.ErrorType
         elif node.expression:
-            if node.expression.type != node.typename.type:
+            if node.expression.type == types.ErrorType:
+                node.type = types.ErrorType
+            elif node.expression.type != node.typename.type:
                 error(node.lineno, '{} is not type {}'.format(node.name, node.typename.name))
             else:
                 node.type = node.expression.type
@@ -238,9 +236,9 @@ class CheckProgramVisitor(NodeVisitor):
             sym.unassigned = True
 
     def visit_Typename(self, node):
-        if not isinstance(self.symtab.get(node.name), gonetype.GoneType):
+        if not isinstance(self.symtab.get(node.name), types.GoneType):
             error(node.lineno, 'Undefined type: {}'.format(node.name))
-            node.type = TypeError
+            node.type = types.ErrorType
         else:
             node.type = self.symtab[node.name]
 
@@ -248,13 +246,13 @@ class CheckProgramVisitor(NodeVisitor):
         sym = self.symtab.get(node.name)
         if sym is None:
             error(node.lineno, '{} is not defined.'.format(node.name))
-            node.type = TypeError
-        elif isinstance(sym, gonetype.GoneType) or isinstance(sym, FunctionPrototype):
+            node.type = types.ErrorType
+        elif isinstance(sym, types.GoneType) or isinstance(sym, FunctionPrototype):
             error(node.lineno, '{} is not a valid location'.format(node.name))
-            node.type = TypeError
+            node.type = types.ErrorType
         elif isinstance(sym, VarDeclaration) and not sym.assigned:
             error(node.lineno, '{} accessed beore assignment'.format(sym.name))
-            node.type = TypeError
+            node.type = types.ErrorType
         else:
             node.type = sym.type
 
@@ -262,12 +260,13 @@ class CheckProgramVisitor(NodeVisitor):
         sym = self.symtab.get(node.name)
         if sym is None:
             error(node.lineno, '{} is not defined.'.format(node.name))
+            node.type = types.ErrorType
         else:
             node.type = sym.type
             sym.assigned = True
 
     def visit_Literal(self, node):
-        node.type = gonetype.get_type(node.value)
+        node.type = types.get_type(node.value)
 
 
 # ----------------------------------------------------------------------
