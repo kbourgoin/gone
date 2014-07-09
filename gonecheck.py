@@ -188,6 +188,7 @@ class CheckProgramVisitor(NodeVisitor):
                           'Argument {}: expected {} but got {}'.format(i+1, func_t, node_t))
                     node.type = types.ErrorType
             else:
+                node.fn = sym
                 node.type = sym.output_typename.type
 
     def visit_AssignStatement(self, node):
@@ -230,10 +231,10 @@ class CheckProgramVisitor(NodeVisitor):
                 node.type = node.expression.type
                 self.symtab[node.name] = node.expression
         else: # no expression -- use default (?)
-            sym = Literal(node.typename.type.default)
+            sym = Literal(node.typename.type.default, lineno=node.lineno)
             sym.type = node.typename.type
             self.symtab[node.name] = sym
-            sym.unassigned = True
+            node.expression = sym
 
     def visit_Typename(self, node):
         if not isinstance(self.symtab.get(node.name), types.GoneType):

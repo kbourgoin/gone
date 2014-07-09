@@ -36,8 +36,8 @@ class GoneType(object):
     are declared as singleton instances of this type.
     '''
     def __repr__(self):
-        if hasattr(self, 'pytype'):
-            return str(self.pytype.__name__)
+        if hasattr(self, 'name'):
+            return self.name
         elif self.__class__.__name__.startswith('_'):
             return self.__class__.__name__[1:]
         else:
@@ -66,6 +66,7 @@ class GoneType(object):
 
 class _IntType(GoneType):
     default = 0
+    name = 'int'
     pytype = int
 
     def add(self, left: 'int', right: 'int') -> 'int':
@@ -89,6 +90,7 @@ IntType = _IntType() # need to instantiate so we can isinstance()
 
 class _FloatType(GoneType):
     default = 0.0
+    name = 'float'
     pytype = float
 
     def add(self, left: 'float', right: 'float') -> 'float':
@@ -113,6 +115,7 @@ FloatType = _FloatType() # need to instantiate so we can isinstance()
 
 class _StringType(GoneType):
     default = ''
+    name = 'string'
     pytype = str
 
     def add(self, left: 'str', right: 'str') -> 'str':

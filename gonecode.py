@@ -200,7 +200,7 @@ class GenerateCode(goneast.NodeVisitor):
          # A list of external declarations (and types)
          self.externs = []
 
-    def new_temp(self,typeobj):
+    def new_temp(self, typeobj):
          '''
          Create a new temporary variable of a given type.
          '''
@@ -215,19 +215,34 @@ class GenerateCode(goneast.NodeVisitor):
     # A few sample methods follow.  You may have to adjust depending
     # on the names of the AST nodes you've defined.
 
-    def visit_Literal(self,node):
-        # Create a new temporary variable name
-        target = self.new_temp(node.type)
+    def visit_Program(self, node):
+        self.visit(node.statements)
 
-        # Make the SSA opcode and append to list of generated instructions
-        inst = ('literal_'+node.type.name, node.value, target)
+    def visit_Statements(self, node):
+        for s in node.statement_list:
+            self.visit(s)
+
+    def visit_PrintStatement(self,node):
+        self.visit(node.expression)
+        inst = ('print_'+node.expression.type.name,
+                node.expression.gen_location)
         self.code.append(inst)
 
-        # Save the name of the temporary variable where the value was placed
+    def visit_UnaryOp(self, node):
+        self.visit(node.operand)
+
+        # Make a new temporary for storing the result
+        target = self.new_temp(node.type)
+
+        # Create the opcode and append to list
+        opcode = unary_ops[node.op] + "_"+node.operand.type.name
+        inst = (opcode, node.operand.gen_location, target)
+        self.code.append(inst)
+
+        # Store location of the result on the node
         node.gen_location = target
 
-    def visit_Binop(self,node):
-        # Visit the left and right expressions
+    def visit_BinaryOp(self,node):
         self.visit(node.left)
         self.visit(node.right)
 
@@ -242,13 +257,66 @@ class GenerateCode(goneast.NodeVisitor):
         # Store location of the result on the node
         node.gen_location = target
 
-    def visit_PrintStatement(self,node):
-        # Visit the printed expression
-        self.visit(node.expr)
-
-        # Create the opcode and append to list
-        inst = ('print_'+node.expr.type.name, node.expr.gen_location)
+    def visit_ExternDeclaration(self, node):
+        self.visit(node.func_prototype)
+        fn = node.func_prototype
+        inst = ('extern_func',
+                fn.name, fn.output_typename.type.name,
+                ) + tuple(p.type.name for p in fn.parameters)
         self.code.append(inst)
+
+    def visit_FunctionPrototype(self, node):
+        pass
+
+    def visit_Parameter(self, node):
+        pass
+
+    def visit_FunctionCall(self, node):
+        for p in node.parameters:
+            self.visit(p)
+        target = self.new_temp(node.type)
+        inst = ('call_func',
+                node.fn.name,
+                ) + tuple(p.gen_location for p in node.parameters) + (target,)
+        self.code.append(inst)
+        node.gen_location = target
+
+    def visit_AssignStatement(self, node):
+        self.visit(node.expression)
+        self.visit(node.location)
+        self.code.append(('store_{}'.format(node.type.name),
+                          node.expression.gen_location,
+                          node.location.name))
+
+    def visit_ConstDeclaration(self, node):
+        self.code.append(('alloc_{}'.format(node.expression.type.name), node.name))
+        self.visit(node.expression)
+        self.code.append(('store_{}'.format(node.expression.type.name),
+                          node.expression.gen_location,
+                          node.name))
+
+    def visit_VarDeclaration(self, node):
+        self.code.append(('alloc_{}'.format(node.typename.type.name), node.name))
+        self.visit(node.expression)
+        self.code.append(('store_{}'.format(node.expression.type.name),
+                          node.expression.gen_location,
+                          node.name))
+
+    def visit_Typename(self, node):
+        pass # nothing to do
+
+    def visit_LoadLocation(self, node):
+        target = self.new_temp(node.type)
+        self.code.append(('load_{}'.format(node.type), node.name, target))
+        node.gen_location = target
+
+    def visit_StoreLocation(self, node):
+        pass # nothing to do
+
+    def visit_Literal(self,node):
+        target = self.new_temp(node.type)
+        self.code.append(('literal_'+node.type.name, node.value, target))
+        node.gen_location = target
 
 # STEP 3: Testing
 #
