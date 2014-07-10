@@ -26,8 +26,8 @@ from llvm.core import Module, Builder, Function, Type, Constant, GlobalVariable
 
 int_type    = Type.int()         # 32-bit integer
 float_type  = Type.double()      # 64-bit float
-string_type = None               # Up to you (leave until the end)
-bool_type   = Type.int(1)
+bool_type   = Type.int(1)        # 1-bit bools
+string_type = Type.pointer(Type.int(8)) # using c-style strings
 
 # A dictionary that maps the typenames used in IR to the corresponding
 # LLVM types defined above.   This is mainly provided for convenience
@@ -35,7 +35,8 @@ bool_type   = Type.int(1)
 typemap = {
     'int' : int_type,
     'float' : float_type,
-    'string' : string_type
+    'string' : string_type,
+    'bool': bool_type,
 }
 
 # The following class is going to generate the LLVM instruction stream.
@@ -111,6 +112,11 @@ class GenerateLLVM(object):
         self.runtime['_print_bool'] = Function.new(self.module,
                                                    Type.function(Type.void(), [bool_type], False),
                                                    "_print_bool")
+
+        self.runtime['_print_string'] = Function.new(self.module,
+                                                   Type.function(Type.void(), [string_type], False),
+                                                   "_print_string")
+
     def generate_code(self, ircode):
         # Given a sequence of SSA intermediate code tuples, generate LLVM
         # instructions using the current builder (self.builder).  Each
@@ -142,6 +148,16 @@ class GenerateLLVM(object):
     def emit_literal_bool(self, value, target):
         self.temps[target] = Constant.int(bool_type, int(value))
 
+    def emit_literal_string(self, value, target):
+        const = Constant.stringz(value)
+        #import pdb; pdb.set_trace()
+        self.temps[target] = const
+        #self.temps[target] = const.bitcast(string_type)
+        #self.temps[target] = self.builder.gep(
+        #    const, [Constant.int(Type.int(32), 0), Constant.int(Type.int(32), 0)],
+        #    inbounds=True)
+        #import pdb; pdb.set_trace()
+
     # Allocation of variables.  Declare as global variables and set to
     # a sensible initial value.
     def emit_alloc_int(self, name):
@@ -159,6 +175,11 @@ class GenerateLLVM(object):
         var.initializer = Constant.int(bool_type, 0)
         self.vars[name] = var
 
+    def emit_alloc_string(self, name):
+        var = GlobalVariable.new(self.module, string_type, name)
+        var.initializer = Constant.null(string_type)
+        self.vars[name] = var
+
 
     # Load/store instructions for variables.  Load needs to pull a
     # value from a global variable and store in a temporary. Store
@@ -172,6 +193,9 @@ class GenerateLLVM(object):
     def emit_load_bool(self, name, target):
         self.temps[target] = self.builder.load(self.vars[name], target)
 
+    def emit_load_string(self, name, target):
+        self.temps[target] = self.builder.load(self.vars[name], target)
+
     def emit_store_int(self, source, target):
         self.builder.store(self.temps[source], self.vars[target])
 
@@ -179,6 +203,9 @@ class GenerateLLVM(object):
         self.builder.store(self.temps[source], self.vars[target])
 
     def emit_store_bool(self, source, target):
+        self.builder.store(self.temps[source], self.vars[target])
+
+    def emit_store_string(self, source, target):
         self.builder.store(self.temps[source], self.vars[target])
 
 
@@ -253,6 +280,9 @@ class GenerateLLVM(object):
 
     def emit_print_bool(self, source):
         self.builder.call(self.runtime['_print_bool'], [self.temps[source]])
+
+    def emit_print_string(self, source):
+        self.builder.call(self.runtime['_print_string'], [self.temps[source]])
 
     # Extern function declaration.
     def emit_extern_func(self, name, rettypename, *parmtypenames):

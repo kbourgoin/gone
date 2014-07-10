@@ -8,6 +8,11 @@ void _print_float(double x) {
   printf("%f\n", x);
 }
 
+void _print_string(char* s) {
+  printf("test");
+  //printf("%i\n", s[0]);
+}
+
 void _print_bool(int x) {
   printf(x ? "True\n" : "False\n");
 }
