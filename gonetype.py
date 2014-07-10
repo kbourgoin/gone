@@ -44,21 +44,19 @@ class GoneType(object):
             return self.__class__.__name__
 
     def check_binop(self, op, left, right):
-        op_fn = getattr(self, binary_ops.get(op), None)
-        if op_fn is None:
+        if op not in self.binops:
             return ErrorType
-        params = op_fn.__annotations__
-        if left.type != typemap[params['left']] or \
-           right.type != typemap[params['right']]:
-               return ErrorType
-        return typemap[params['return']]
+        elif left.type != right.type:
+            # type coersion checking could go here
+            return ErrorType
+        return typemap[self.binops[op]]
 
     def check_unaop(self, op):
-        op_fn = getattr(self, unary_ops.get(op), None)
-        if op_fn is None:
+        if op not in self.unaops:
             return ErrorType
-        params = op_fn.__annotations__
-        return typemap[params['return']]
+        # type coersion checking could go here
+        return typemap[self.unaops[op]]
+
 
     def check_type(self, python_var):
         if self.pytype == int and (python_var is True or python_var is False):
@@ -69,150 +67,66 @@ class _IntType(GoneType):
     default = 0
     name = 'int'
     pytype = int
-
-    def add_op(self, left: 'int', right: 'int') -> 'int':
-        pass # todo: codegen
-
-    def sub_op(self, left: 'int', right: 'int') -> 'int':
-        pass # todo: codegen
-
-    def mul_op(self, left: 'int', right: 'int') -> 'int':
-        pass # todo: codegen
-
-    def div_op(self, left: 'int', right: 'int') -> 'int':
-        pass # todo: codegen
-
-    def uadd_op(self) -> 'int':
-        pass # todo: codegen
-
-    def usub_op(self) -> 'int':
-        pass # todo: codegen
-
-    def eq_op(self, left: 'int', right: 'int') -> 'bool':
-        pass
-
-    def neq_op(self, left: 'int', right: 'int') -> 'bool':
-        pass
-
-    def lt_op(self, left: 'int', right: 'int') -> 'bool':
-        pass
-
-    def lte_op(self, left: 'int', right: 'int') -> 'bool':
-        pass
-
-    def gt_op(self, left: 'int', right: 'int') -> 'bool':
-        pass
-
-    def gte_op(self, left: 'int', right: 'int') -> 'bool':
-        pass
+    unaops = {'+':  'int',
+              '-':  'int',
+              }
+    binops = {'+':  'int',
+              '-':  'int',
+              '*':  'int',
+              '/':  'int',
+              '-':  'int',
+              '==': 'bool',
+              '!=': 'bool',
+              '<':  'bool',
+              '<=': 'bool',
+              '>':  'bool',
+              '>=': 'bool',
+              }
 IntType = _IntType() # need to instantiate so we can isinstance()
 
 class _FloatType(GoneType):
     default = 0.0
     name = 'float'
     pytype = float
-
-    def add_op(self, left: 'float', right: 'float') -> 'float':
-        pass # todo: codegen
-
-    def sub_op(self, left: 'float', right: 'float') -> 'float':
-        pass # todo: codegen
-
-    def mul_op(self, left: 'float', right: 'float') -> 'float':
-        pass # todo: codegen
-
-    def div_op(self, left: 'float', right: 'float') -> 'float':
-        pass # todo: codegen
-
-    def uadd_op(self) -> 'float':
-        pass # todo: codegen
-
-    def usub_op(self) -> 'float':
-        pass # todo: codegen
-
-    def eq_op(self, left: 'float', right: 'float') -> 'bool':
-        pass
-
-    def neq_op(self, left: 'float', right: 'float') -> 'bool':
-        pass
-
-    def lt_op(self, left: 'float', right: 'float') -> 'bool':
-        pass
-
-    def lte_op(self, left: 'float', right: 'float') -> 'bool':
-        pass
-
-    def gt_op(self, left: 'float', right: 'float') -> 'bool':
-        pass
-
-    def gte_op(self, left: 'float', right: 'float') -> 'bool':
-        pass
+    unaops = {'+':  'float',
+              '-':  'float',
+              }
+    binops = {'+':  'float',
+              '-':  'float',
+              '*':  'float',
+              '/':  'float',
+              '-':  'float',
+              '==': 'bool',
+              '!=': 'bool',
+              '<':  'bool',
+              '<=': 'bool',
+              '>':  'bool',
+              '>=': 'bool',
+              }
 FloatType = _FloatType() # need to instantiate so we can isinstance()
 
 class _StringType(GoneType):
     default = ''
     name = 'string'
     pytype = str
-
-    def add_op(self, left: 'str', right: 'str') -> 'str':
-        pass # todo: codegen
-
-    def eq_op(self, left: 'str', right: 'str') -> 'bool':
-        pass
-
-    def neq_op(self, left: 'str', right: 'str') -> 'bool':
-        pass
-
-    def and_op(self, left: 'str', right: 'str') -> 'bool':
-        pass
-
-    def or_op(self, left: 'str', right: 'str') -> 'bool':
-        pass
-
-    def lt_op(self, left: 'str', right: 'str') -> 'bool':
-        pass
-
-    def lte_op(self, left: 'str', right: 'str') -> 'bool':
-        pass
-
-    def gt_op(self, left: 'str', right: 'str') -> 'bool':
-        pass
-
-    def gte_op(self, left: 'str', right: 'str') -> 'bool':
-        pass
+    unaops = {}
+    binops = {'+':  'int',
+              '==': 'bool',
+              '!=': 'bool',
+              }
 StringType = _StringType() # need to instantiate so we can isinstance()
 
 class _BoolType(GoneType):
     default = False
     name = 'bool'
     pytype = bool
-
-    def eq_op(self, left: 'bool', right: 'bool') -> 'bool':
-        pass
-
-    def neq_op(self, left: 'bool', right: 'bool') -> 'bool':
-        pass
-
-    def and_op(self, left: 'bool', right: 'bool') -> 'bool':
-        pass
-
-    def or_op(self, left: 'bool', right: 'bool') -> 'bool':
-        pass
-
-    def lt_op(self, left: 'bool', right: 'bool') -> 'bool':
-        pass
-
-    def lte_op(self, left: 'bool', right: 'bool') -> 'bool':
-        pass
-
-    def gt_op(self, left: 'bool', right: 'bool') -> 'bool':
-        pass
-
-    def gte_op(self, left: 'bool', right: 'bool') -> 'bool':
-        pass
-
-    def not_op(self, left: 'bool', right: 'bool') -> 'bool':
-        pass
+    unaops = {'!':  'bool',
+              }
+    binops = {'==': 'bool',
+              '!=': 'bool',
+              '||': 'bool',
+              '&&': 'bool',
+              }
 BoolType = _BoolType() # need to instantiate so we can isinstance()
 
 class _ErrorType(GoneType):
