@@ -64,15 +64,6 @@ class LLVMBlockVisitor(goneast.NodeVisitor):
         # Return nothing
         self.llvm.builder.ret_void()
 
-    def new_block_name(self):
-        out = 'b{}'.format(self._next_block)
-        self._next_block += 1
-        return out
-
-    def make_basic_block(self, instructions, name=None):
-        name = name or self.new_block_name()
-        return block
-
     def visit_BasicBlock(self, block):
         print('visit_BasicBlock')
         # Start a new block
@@ -191,11 +182,6 @@ class GenerateLLVM(object):
             else:
                 print("Warning: No emit_"+opcode+"() method")
 
-    # ----------------------------------------------------------------------
-    # Opcode implementation.   You must implement the opcodes.  A few
-    # sample opcodes have been given to get you started.
-    # ----------------------------------------------------------------------
-
     # Creation of literal values.  Simply define as LLVM constants.
     def emit_literal_int(self, value, target):
         self.temps[target] = Constant.int(int_type, value)
@@ -207,14 +193,7 @@ class GenerateLLVM(object):
         self.temps[target] = Constant.int(bool_type, int(value))
 
     def emit_literal_string(self, value, target):
-        const = Constant.stringz(value)
-        #import pdb; pdb.set_trace()
-        self.temps[target] = const
-        #self.temps[target] = const.bitcast(string_type)
-        #self.temps[target] = self.builder.gep(
-        #    const, [Constant.int(Type.int(32), 0), Constant.int(Type.int(32), 0)],
-        #    inbounds=True)
-        #import pdb; pdb.set_trace()
+        pass
 
     # Allocation of variables.  Declare as global variables and set to
     # a sensible initial value.
