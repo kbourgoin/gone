@@ -166,7 +166,7 @@ from collections import defaultdict
 
 import goneast
 
-from goneblock import BasicBlock, IfBlock, WhileBlock, TerminalBlock
+from goneblock import BasicBlock, IfBlock, WhileBlock
 
 # STEP 1: Map map operator symbol names such as +, -, *, /
 # to actual opcode names 'add','sub','mul','div' to be emitted in

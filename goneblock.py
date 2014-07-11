@@ -79,12 +79,3 @@ class WhileBlock(_Block):
         if self.next_block:
             out += '\n\n{}'.format(self.next_block)
         return out
-
-class TerminalBlock(_Block):
-    def __init__(self):
-        super().__init__()
-        self.ret_val = None
-
-    def __repr__(self):
-        return self.__class__.__name__
-
