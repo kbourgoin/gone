@@ -150,6 +150,31 @@ class CheckProgramVisitor(NodeVisitor):
         self.visit(node.func_prototype)
         node.type = node.func_prototype.type
 
+    def visit_FunctionDeclaration(self, node):
+        self.visit(node.prototype)
+
+        # Create a local scope with declared vars and check statements
+        self.symtab = self.symtab.new_child() # push local scope on
+        for p in node.prototype.parameters:
+            self.symtab[p.name] = Literal(None)
+            self.symtab[p.name].type = p.typename.type
+        self.visit(node.statements)
+        self.symtab = self.symtab.parents # pop local scope off
+
+        # Check return type(s)
+        returns = [s for s
+                   in node.statements.statement_list
+                   if isinstance(s, ReturnStatement)]
+        for r in returns:
+            if r.type != node.prototype.output_typename.type:
+                error(node.lineno, "invalid return type: {}".format(r.type))
+
+        # TODO: Check for paths that won't return
+
+    def visit_ReturnStatement(self, node):
+        self.visit(node.expression)
+        node.type = node.expression.type
+
     def visit_FunctionPrototype(self, node):
         sym = self.symtab.get(node.name)
         if sym is not None:
@@ -197,7 +222,8 @@ class CheckProgramVisitor(NodeVisitor):
         self.visit(node.expression)
 
         if node.location.type != node.expression.type:
-            error(node.lineno, '{} is not type {}'.format(node.location.name, node.expression.type))
+            if node.location.type != types.ErrorType and node.expression.type != types.ErrorType:
+                error(node.lineno, '{} is not type {}'.format(node.location.name, node.expression.type))
         elif node.location.name not in self.symtab:
             error(node.lineno, 'Name is not defined: {}'.format(node.location.name))
         elif isinstance(self.symtab[node.location.name], ConstDeclaration):
