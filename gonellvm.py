@@ -16,6 +16,8 @@ instructions.
 Further instructions are contained in the comments.
 '''
 
+from collections import ChainMap
+
 import goneast
 
 # LLVM imports. Don't change this.
@@ -53,16 +55,14 @@ class LLVMBlockVisitor(goneast.NodeVisitor):
         self.llvm = GenerateLLVM()
         self._next_block = 0
 
-    def generate_llvm(self, first_block):
-        # Start a basic block to write to
-        start_llvm = self.llvm.function.append_basic_block('start')
-        self.llvm.builder = Builder.new(start_llvm)
+    def generate_llvm(self, functions):
+        # Make sure the function signatures exist
+        for fn in functions:
+            self.llvm.declare_function(fn)
 
-         # Visit all nodes
-        self.visit(first_block)
-
-        # Return nothing
-        self.llvm.builder.ret_void()
+        # Actually make the blocks for the functions
+        for fn in functions:
+            self.visit(fn)
 
     def visit_BasicBlock(self, block):
         print('visit_BasicBlock')
@@ -73,6 +73,24 @@ class LLVMBlockVisitor(goneast.NodeVisitor):
         # Add instructions and move on
         self.llvm.generate_code(block.instructions)
         self.visit(block.next_block)
+
+    def visit_FunctionBlock(self, block):
+        # Set up the builder to the top of this function
+        name = block.instructions[0][1]
+        self.llvm.function = self.llvm.vars[name]
+        start_llvm = self.llvm.function.append_basic_block('start')
+        self.llvm.builder = Builder.new(start_llvm)
+
+        # Make some scope for the function and add parameters
+        self.llvm.vars = self.llvm.vars.new_child()
+        for arg in self.llvm.vars[name].args:
+            arg_v = self.llvm.builder.alloca(arg.type, name=arg.name)
+            self.llvm.builder.store(arg, arg_v)
+            self.llvm.vars[arg.name] = arg_v
+
+        # Visit the block like normal
+        self.visit(block.body)
+        self.llvm.vars = self.llvm.vars.parents # pop local scope off
 
     def visit_IfBlock(self, block):
         print('visit_IfBlock')
@@ -140,10 +158,7 @@ class LLVMBlockVisitor(goneast.NodeVisitor):
 class GenerateLLVM(object):
     def __init__(self,name="module"):
         self.module = Module.new(name)
-        self.function = Function.new(self.module,
-                                     Type.function(Type.void(), [], False),
-                                     "main")
-        self.vars = {}
+        self.vars = ChainMap()
         self.temps = {}
         self.declare_runtime_library()
 
@@ -173,6 +188,23 @@ class GenerateLLVM(object):
         self.runtime['_print_string'] = Function.new(self.module,
                                                    Type.function(Type.void(), [string_type], False),
                                                    "_print_string")
+
+    def declare_function(self, func_block):
+        """Declare a Function and add it to self.vars"""
+        _, name, *args, ret_type = func_block.instructions[0]
+        if not ret_type:
+            ret_type = args[0]
+            arg_types = []
+        else:
+            arg_types = [typemap[t] for t in args[0::2]]
+        ret_type = typemap[ret_type]
+        function = Function.new(
+            self.module, Type.function(ret_type, arg_types, False), name
+        )
+        for i, argname in enumerate(args[1::2]):
+            function.args[i].name = argname
+        self.vars[name] = function
+
 
     def generate_code(self, ircode):
         for op in ircode:
@@ -410,6 +442,11 @@ class GenerateLLVM(object):
     def emit_and_bool(self, left, right, target):
         self.temps[target] = self.builder.and_(self.temps[left], self.temps[right])
 
+    # Return statements
+
+    def emit_return_int(self, target):
+        self.builder.ret(self.temps[target])
+
 
 #######################################################################
 #                 DO NOT MODIFY ANYTHING BELOW HERE
@@ -437,10 +474,10 @@ def main():
         gonecheck.check_program(program)
         # If no errors occurred, generate code
         if not errors_reported():
-            blocks = gonecode.generate_code(program)
+            functions = gonecode.generate_code(program)
             # Emit the code sequence
             bv = LLVMBlockVisitor()
-            bv.generate_llvm(blocks.first_block)
+            bv.generate_llvm(functions)
             print(bv.llvm.module)
 
             # Verify and run function that was created during code generation

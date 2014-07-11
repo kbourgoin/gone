@@ -387,7 +387,7 @@ class GenerateCode(goneast.NodeVisitor):
     def visit_ReturnStatement(self, node):
         self.visit(node.expression)
         self.current_block.append((
-            'return__{}'.format(node.expression.type.name),
+            'return_{}'.format(node.expression.type.name),
             node.expression.gen_location
         ))
 
