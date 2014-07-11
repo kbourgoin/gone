@@ -162,6 +162,8 @@ To start, your SSA code should only contain the following operators:
        ('print_type',source)              # Print value of source
 '''
 
+import itertools
+
 from collections import defaultdict
 
 import goneast
@@ -415,9 +417,11 @@ class GenerateCode(goneast.NodeVisitor):
         self.current_block = func_block
         self.visit(node.prototype)
         fn = node.prototype
+        params = itertools.chain.from_iterable((p.name, p.type.name)
+                                                for p in fn.parameters)
         inst = ('declare_func',
                 fn.name, fn.output_typename.type.name,
-                ) + tuple(p.type.name for p in fn.parameters)
+                ) + tuple(params)
         func_block.instructions.append(inst)
 
         # Create the body block as a BasicBlock
