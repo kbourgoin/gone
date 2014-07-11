@@ -1,23 +1,4 @@
 # goneinterp.py
-'''
-Project 4 (Part 2) :  Write an Interpreter
-==========================================
-
-Once you've got your compiler emitting intermediate code, you should
-be able to write a simple interpreter that runs the code.  This
-can be useful for prototyping the execution environment, testing,
-and other tasks involving the generated code.
-
-Your task is simple, extend the Interpreter class below so that it
-can run the code you generated in part 1.  The comments and docstrings
-in the class describe it in further details.
-
-When your done, you should be able to run simple programs by
-typing:
-
-    bash % python goneinterp.py someprogram.g
-'''
-
 class Interpreter(object):
     '''
     Runs an interpreter on the SSA intermediate code generated for
@@ -73,10 +54,6 @@ class Interpreter(object):
                 else:
                     print("Warning: No run_"+opcode+"() method")
 
-    # YOU MUST IMPLEMENT:  Methods for different opcodes.  A few sample
-    # opcodes are shown below to get you started.
-
-
     def run_add(self, left, right, target):
         self.vars[target] = self.vars[left] + self.vars[right]
 
@@ -116,15 +93,9 @@ class Interpreter(object):
         self.vars[target] = self.vars[name](params)
 
     def run_literal(self, value, target):
-        '''
-        Create a literal integer value
-        '''
         self.vars[target] = value
 
     def run_print(self, source):
-        '''
-        Output an integer value.
-        '''
         print(self.vars[source])
 
     def run_eq(self, left, right, target):
@@ -154,12 +125,6 @@ class Interpreter(object):
     def run_not(self, source, target):
         self.vars[target] = not self.vars[source]
 
-
-    # You must implement the rest of the operations below
-
-# ----------------------------------------------------------------------
-#                       DO NOT MODIFY ANYTHING BELOW
-# ----------------------------------------------------------------------
 def main():
     import gonelex
     import goneparse
@@ -182,8 +147,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-
-
-

@@ -1,21 +1,4 @@
 # gonellvm.py
-'''
-Project 5 : Generate LLVM
-=========================
-In this project, you're going to translate the SSA intermediate code
-into LLVM IR.    Once you're done, your code will be runnable.  It
-is strongly advised that you do *all* of the steps of Exercise 5
-prior to starting this project.   Don't rush into it.
-
-The basic idea of this project is exactly the same as the interpreter
-in Project 4.   You'll make a class that walks through the instruction
-sequence and triggers a method for each kind of instruction.  Instead
-of running the instruction however, you'll be generating LLVM
-instructions.
-
-Further instructions are contained in the comments.
-'''
-
 from collections import ChainMap
 
 import goneast
@@ -24,30 +7,17 @@ import goneast
 from llvm import core
 from llvm.core import Module, Builder, Function, Type, Constant, GlobalVariable
 
-# Declare the LLVM type objects that you want to use for the types
-# in our intermediate code.  Basically, you're going to need to
-# declare your integer, float, and string types here.
-
 int_type    = Type.int()         # 32-bit integer
 float_type  = Type.double()      # 64-bit float
 bool_type   = Type.int(1)        # 1-bit bools
 string_type = Type.pointer(Type.int(8)) # using c-style strings
 
-# A dictionary that maps the typenames used in IR to the corresponding
-# LLVM types defined above.   This is mainly provided for convenience
-# so you can quickly look up the type object given its type name.
 typemap = {
     'int' : int_type,
     'float' : float_type,
     'string' : string_type,
     'bool': bool_type,
 }
-
-# The following class is going to generate the LLVM instruction stream.
-# The basic features of this class are going to mirror the experiments
-# you tried in Exercise 5.  The execution module is very similar
-# to the interpreter written in Project 4.  See specific comments
-# in the class.
 
 class LLVMBlockVisitor(goneast.NodeVisitor):
 
@@ -177,16 +147,7 @@ class GenerateLLVM(object):
         self.declare_runtime_library()
 
     def declare_runtime_library(self):
-        """
-        Certain functions such as I/O and string handling are often easier
-        to implement in an external C library.  This method should make
-        the LLVM declarations for any runtime functions to be used
-        during code generation.    Please note that runtime function
-        functions are implemented in C in a separate file gonert.c
-        """
         self.runtime = {}
-
-        # Declare printing functions
         self.runtime['_print_int'] = Function.new(self.module,
                                                  Type.function(Type.void(), [int_type], False),
                                                  "_print_int")
@@ -219,7 +180,6 @@ class GenerateLLVM(object):
         for i, argname in enumerate(args[0::2]):
             function.args[i].name = argname
         self.vars[name] = function
-
 
     def generate_code(self, ircode):
         for op in ircode:
@@ -273,10 +233,7 @@ class GenerateLLVM(object):
     def emit_local_bool(self, name):
         self.vars[name] = self.builder.alloca(bool_type, name=name)
 
-
-    # Load/store instructions for variables.  Load needs to pull a
-    # value from a global variable and store in a temporary. Store
-    # goes in the opposite direction.
+    # Load/Store variables
     def emit_load_int(self, name, target):
         self.temps[target] = self.builder.load(self.vars[name], target)
 
@@ -300,7 +257,6 @@ class GenerateLLVM(object):
 
     def emit_store_string(self, source, target):
         self.builder.store(self.temps[source], self.vars[target])
-
 
     # Binary + operator
     def emit_add_int(self, left, right, target):
@@ -391,7 +347,6 @@ class GenerateLLVM(object):
         self.temps[target] = self.builder.call(self.vars[name], params)
 
     # Binary == operator
-
     def emit_eq_int(self, left, right, target):
         self.temps[target] = self.builder.icmp(core.ICMP_EQ, self.temps[left], self.temps[right])
 
@@ -402,7 +357,6 @@ class GenerateLLVM(object):
         self.temps[target] = self.builder.icmp(core.ICMP_EQ, self.temps[left], self.temps[right])
 
     # Binary != operator
-
     def emit_neq_int(self, left, right, target):
         self.temps[target] = self.builder.icmp(core.ICMP_NE, self.temps[left], self.temps[right])
 
@@ -413,7 +367,6 @@ class GenerateLLVM(object):
         self.temps[target] = self.builder.icmp(core.ICMP_NE, self.temps[left], self.temps[right])
 
     # Binary > operator
-
     def emit_gt_int(self, left, right, target):
         self.temps[target] = self.builder.icmp(core.ICMP_SGT, self.temps[left], self.temps[right])
 
@@ -424,7 +377,6 @@ class GenerateLLVM(object):
         self.temps[target] = self.builder.icmp(core.ICMP_SGT, self.temps[left], self.temps[right])
 
     # Binary >= operator
-
     def emit_gte_int(self, left, right, target):
         self.temps[target] = self.builder.icmp(core.ICMP_SGE, self.temps[left], self.temps[right])
 
@@ -435,7 +387,6 @@ class GenerateLLVM(object):
         self.temps[target] = self.builder.icmp(core.ICMP_SGE, self.temps[left], self.temps[right])
 
     # Binary < operator
-
     def emit_lt_int(self, left, right, target):
         self.temps[target] = self.builder.icmp(core.ICMP_SLT, self.temps[left], self.temps[right])
 
@@ -446,7 +397,6 @@ class GenerateLLVM(object):
         self.temps[target] = self.builder.icmp(core.ICMP_SLT, self.temps[left], self.temps[right])
 
     # Binary <= operator
-
     def emit_lte_int(self, left, right, target):
         self.temps[target] = self.builder.icmp(core.ICMP_SLE, self.temps[left], self.temps[right])
 
@@ -458,16 +408,13 @@ class GenerateLLVM(object):
 
     # Binary || operator
 
-    def emit_or_bool(self, left, right, target):
         self.temps[target] = self.builder.or_(self.temps[left], self.temps[right])
 
     # Binary && operator
-
     def emit_and_bool(self, left, right, target):
         self.temps[target] = self.builder.and_(self.temps[left], self.temps[right])
 
     # Return statements
-
     def emit_return_int(self, target):
         self.builder.ret(self.temps[target])
 
@@ -477,10 +424,6 @@ class GenerateLLVM(object):
     def emit_return_bool(self, target):
         self.builder.ret(self.temps[target])
 
-
-#######################################################################
-#                 DO NOT MODIFY ANYTHING BELOW HERE
-#######################################################################
 
 def main():
     import gonelex
@@ -518,10 +461,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-
-
-
-
-

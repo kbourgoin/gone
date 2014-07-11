@@ -9,8 +9,7 @@ void _print_float(double x) {
 }
 
 void _print_string(char* s) {
-  printf("test");
-  //printf("%i\n", s[0]);
+  printf("%i\n", s[0]);
 }
 
 void _print_bool(int x) {

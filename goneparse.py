@@ -1,11 +1,5 @@
 # goneparse.py
 '''
-Project 2:  Write a parser
-==========================
-In this project, you write the basic shell of a parser for the expression
-language.  A formal BNF of the language follows.  Your task is to write
-parsing rules and build the AST for this grammar using PLY.
-
 program : statements
         | empty
 
@@ -80,32 +74,11 @@ location : ID
 typename : ID
 
 empty    :
-
-To do the project, follow the instructions contained below.
 '''
 
-# ----------------------------------------------------------------------
-# parsers are defined using PLYs yacc module.
-#
-# See http://www.dabeaz.com/ply/ply.html#ply_nn23
-# ----------------------------------------------------------------------
 from ply import yacc
-
-# ----------------------------------------------------------------------
-# The following import loads a function error(lineno,msg) that should be
-# used to report all error messages issued by your parser.  Unit tests and
-# other features of the compiler will rely on this function.  See the
-# file errors.py for more documentation about the error handling mechanism.
 from errors import error
-
-# ----------------------------------------------------------------------
-# Get the token list defined in the lexer module.  This is required
-# in order to validate and build the parsing tables.
 from gonelex import tokens
-
-# ----------------------------------------------------------------------
-# Get the AST nodes.
-# Read instructions in goneast.py
 from goneast import *
 
 # ----------------------------------------------------------------------
@@ -363,20 +336,11 @@ def p_empty(p):
     p[0] = None
 
 
-# ----------------------------------------------------------------------
-# DO NOT MODIFY
-#
-# catch-all error handling.   The following function gets called on any
-# bad input.  See http://www.dabeaz.com/ply/ply.html#ply_nn31
 def p_error(p):
     if p:
         error(p.lineno, "Syntax error in input at token '%s'" % p.value)
     else:
         error("EOF","Syntax error. No more input.")
-
-# ----------------------------------------------------------------------
-#                     DO NOT MODIFY ANYTHING BELOW HERE
-# ----------------------------------------------------------------------
 
 def make_parser():
     parser = yacc.yacc()

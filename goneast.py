@@ -1,17 +1,10 @@
 # goneast.py
 '''
 Abstract Syntax Tree (AST) objects.
-
-This file defines classes for different kinds of nodes of an Abstract
-Syntax Tree.  During parsing, you will create these nodes and connect
-them together.  In general, you will have a different AST node for
-each kind of grammar rule.  A few sample AST nodes can be found at the
-top of this file.  You will need to add more on your own.
 '''
 
 from errors import error
 
-# DO NOT MODIFY
 class AST(object):
     '''
     Base class for all of the AST nodes.  Each node is expected to
@@ -40,18 +33,6 @@ class AST(object):
             return '{}{} {}'.format(l, self.__class__.__name__, vals)
         else:
             return '{}{}'.format(l, self.__class__.__name__)
-
-# ----------------------------------------------------------------------
-# Specific AST nodes.
-#
-# For each node, you need to define a class and add the appropriate _fields = []
-# specification that indicates what fields are to be stored.  Just as
-# an example, for a binary operator, you might store the operator, the
-# left expression, and the right expression like this:
-#
-#    class Binop(AST):
-#        _fields = ['op','left','right']
-# ----------------------------------------------------------------------
 
 ##
 ## Decorator stuff for later fun
@@ -179,14 +160,6 @@ class WhileStatement(AST):
         self.is_terminal = self.while_body.is_terminal(return_type)
         return self.is_terminal
 
-# ----------------------------------------------------------------------
-#                  DO NOT MODIFY ANYTHING BELOW HERE
-# ----------------------------------------------------------------------
-
-# The following classes for visiting and rewriting the AST are taken
-# from Python's ast module.
-
-# DO NOT MODIFY
 class NodeVisitor(object):
     '''
     Class for visiting nodes of the parse tree.  This is modeled after
@@ -240,7 +213,6 @@ class NodeVisitor(object):
             elif isinstance(value, AST):
                 self.visit(value)
 
-# DO NOT MODIFY
 class NodeTransformer(NodeVisitor):
     '''
     Class that allows nodes of the parse tree to be replaced/rewritten.
@@ -273,7 +245,6 @@ class NodeTransformer(NodeVisitor):
                     setattr(node,field,newnode)
         return node
 
-# DO NOT MODIFY
 def flatten(top):
     '''
     Flatten the entire parse tree into a list for the purposes of

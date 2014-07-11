@@ -1,31 +1,5 @@
 # gonelex.py
 r'''
-Project 1 - Write a Lexer
-=========================
-In the first project, you are going to write a simple lexer for the
-Gone language. The project is presented as code that you must
-read and complete (this file).  Please read the complete contents of
-this file and carefully complete the steps indicated by comments.
-
-Overview:
----------
-The process of lexing is that of taking input text and breaking it
-down into a stream of tokens. Each token is like a valid word from the
-dictionary.  Essentially, the role of the lexer is to simply make sure
-that the input text consists of valid symbols and tokens prior to any
-further processing related to parsing.
-
-Each token is defined by a regular expression.  Thus, your primary task
-in this first project is to define a set of regular expressions for
-the language.  The actual job of lexing will be handled by PLY
-(http://www.dabeaz.com/ply).
-
-Specification:
---------------
-Your lexer must recognize the following symbols and tokens.  The name
-on the left is the token name, the value on the right is the matching
-text.
-
 Reserved Keywords:
     CONST   : 'const'
     VAR     : 'var'
@@ -67,32 +41,6 @@ Literals:
               '1234.'
 
     STRING  : '"Hello World"'
-
-Comments:  To be ignored by your lexer
-     //             Skips the rest of the line
-     /* ... */      Skips a block (no nesting allowed)
-
-Errors: Your lexer must report the following error messages:
-
-     lineno: Illegal char 'c'
-     lineno: Unterminated string
-     lineno: Unterminated comment
-
-Testing
--------
-For initial development, try running the lexer on a sample input file
-such as:
-
-     bash % python gonelex.py sample.g
-
-Carefully study the output of the lexer and make sure that it makes sense.
-Once you are reasonably happy with the output, try running some of the
-more tricky tests:
-
-     bash % python gonelex.py testlex1.g
-     bash % python gonelex.py testlex2.g
-
-Bonus: How would you go about turning these tests into proper unit tests?
 '''
 
 # ----------------------------------------------------------------------
@@ -136,7 +84,6 @@ tokens = [
 # Ignored characters (whitespace)
 #
 # The following characters are ignored completely by the lexer.
-# Do not change.
 
 t_ignore = ' \t\r'
 
@@ -173,10 +120,9 @@ t_NOT       = r'!'
 #
 #   1.23, 1.23e1, 1.23e+1, 1.23e-1, 123., .123, 1e1, 0.
 #
-# The value should be converted to a Python float when lexed
 def t_FLOAT(t):
     r'\d*((\.\d*)([eE][+-]?\d+)?|([eE][+-]?\d+))'
-    t.value = float(t.value)               # Conversion to Python float
+    t.value = float(t.value)
     return t
 
 # Integer constant. For example:
@@ -185,10 +131,8 @@ def t_FLOAT(t):
 #     0x4d2  # hex
 #     0o2322 # octal
 
-# The value should be converted to a Python int when lexed.
 def t_INTEGER(t):
     r'(0x[0-9a-fA-F]+|0o[0-7]+|\d+)'
-    # Conversion to a Python int
     if t.value.startswith('0x'):
         t.value = int(t.value[2:], 16)
     elif t.value.startswith('0o'):
@@ -210,7 +154,6 @@ def t_INTEGER(t):
 #
 # The token value should be the string with all escape codes replaced by
 # their corresponding raw character code.
-#
 def t_STRING(t):
     r'"(\\"|[^\n])*?[^\\]"'
     # Strip off the leading/trailing quotes
@@ -222,10 +165,6 @@ def t_STRING(t):
 
 # ----------------------------------------------------------------------
 # Identifiers and keywords.
-
-# Match a raw identifier.  Identifiers follow the same rules as Python.
-# That is, they start with a letter or underscore (_) and can contain
-# an arbitrary number of letters, digits, or underscores after that.
 def t_ID(t):
     r'[a-zA-Z_][a-zA-Z0-9_]*'
     keywords = {'var': 'VAR',
@@ -289,13 +228,7 @@ def t_STRING_UNTERM(t):
     error(t.lexer.lineno,"Unterminated string literal")
     t.lexer.lineno += 1
 
-# ----------------------------------------------------------------------
-#                DO NOT CHANGE ANYTHING BELOW THIS PART
-# ----------------------------------------------------------------------
 def make_lexer():
-    '''
-    Utility function for making the lexer object
-    '''
     return lex()
 
 def main():
