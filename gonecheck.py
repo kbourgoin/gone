@@ -161,15 +161,10 @@ class CheckProgramVisitor(NodeVisitor):
         self.visit(node.statements)
         self.symtab = self.symtab.parents # pop local scope off
 
-        # Check return type(s)
-        returns = [s for s
-                   in node.statements.statement_list
-                   if isinstance(s, ReturnStatement)]
-        for r in returns:
-            if r.type != node.prototype.output_typename.type:
-                error(node.lineno, "invalid return type: {}".format(r.type))
-
-        # TODO: Check for paths that won't return
+        # Make sure we return from this function someday
+        return_type = node.prototype.output_typename.type
+        if not node.statements.is_terminal(return_type):
+            error(node.lineno, 'Function {} may not return'.format(node.prototype.name))
 
     def visit_ReturnStatement(self, node):
         self.visit(node.expression)

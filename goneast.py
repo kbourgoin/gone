@@ -9,6 +9,8 @@ each kind of grammar rule.  A few sample AST nodes can be found at the
 top of this file.  You will need to add more on your own.
 '''
 
+from errors import error
+
 # DO NOT MODIFY
 class AST(object):
     '''
@@ -109,6 +111,13 @@ class FunctionPrototype(AST):
 class IfStatement(AST):
     _fields = ['relation', 'if_body', 'else_body']
 
+    def is_terminal(self, return_type):
+        """Check if this `if` is terminal (has else and both return)"""
+        if not self.else_body:
+            return False
+        return self.if_body.is_terminal(return_type) and self.else_body.is_terminal(return_type)
+
+
 class Literal(AST):
     _fields = ['value']
 
@@ -129,6 +138,20 @@ class ReturnStatement(AST):
 
 class Statements(AST):
     _fields = ['statement_list']
+
+    def is_terminal(self, return_type):
+        """Check if this group of statements is terminal (has a return)"""
+        for s in self.statement_list:
+            if isinstance(s, ReturnStatement) or (
+               isinstance(s, IfStatement) and s.is_terminal(return_type)
+               ):
+                if isinstance(s, ReturnStatement) and s.type != return_type:
+                    error(self.lineno, "invalid return type: {}".format(return_type))
+                elif s != self.statement_list[-1]:
+                    error(self.lineno, "code after {} is unreachable".format(self.lineno))
+                return True # they all technically are terminal
+        return False # nothing found
+
 
 class Statement(AST):
     _fields = ['declaration']
