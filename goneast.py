@@ -91,12 +91,6 @@ class AssignStatement(AST):
 class BinaryOp(AST):
     _fields = ['op', 'left', 'right']
 
-class IfStatement(AST):
-    _fields = ['relation', 'if_body', 'else_body']
-
-class WhileStatement(AST):
-    _fields = ['relation', 'while_body']
-
 class ConstDeclaration(AST):
     _fields = ['name', 'expression']
 
@@ -106,8 +100,14 @@ class ExternDeclaration(AST):
 class FunctionCall(AST):
     _fields = ['name', 'parameters']
 
+class FunctionDeclaration(AST):
+    _fields = ['prototype', 'statements']
+
 class FunctionPrototype(AST):
     _fields = ['name', 'parameters', 'output_typename']
+
+class IfStatement(AST):
+    _fields = ['relation', 'if_body', 'else_body']
 
 class Literal(AST):
     _fields = ['value']
@@ -123,6 +123,9 @@ class PrintStatement(AST):
 
 class Program(AST):
     _fields = ['statements']
+
+class ReturnStatement(AST):
+    _fields = ['expression']
 
 class Statements(AST):
     _fields = ['statement_list']
@@ -141,6 +144,9 @@ class UnaryOp(AST):
 
 class VarDeclaration(AST):
     _fields = ['name', 'typename', 'expression']
+
+class WhileStatement(AST):
+    _fields = ['relation', 'while_body']
 
 # ----------------------------------------------------------------------
 #                  DO NOT MODIFY ANYTHING BELOW HERE

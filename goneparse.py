@@ -15,14 +15,18 @@ statements :  statements statement
 statement :  const_declaration
           |  var_declaration
           |  extern_declaration
+          |  func_declaration
           |  assign_statement
           |  print_statement
           |  if_statment
           |  while_statement
+          |  return_statement
 
 if_statement : IF ( expression )
 
 while_statement : WHILE ( expression )
+
+return_statement : RETURN ( expression ) ;
 
 const_declaration : CONST ID = expression ;
 
@@ -143,10 +147,12 @@ def p_statement(p):
     statement :  print_statement
               |  assign_statement
               |  extern_declaration
+              |  function_declaration
               |  const_declaration
               |  var_declaration
               |  if_statement
               |  while_statement
+              |  return_statement
     '''
     p[0] = p[1]
 
@@ -189,6 +195,12 @@ def p_extern_declaration(p):
     '''
     p[0] = ExternDeclaration(p[2], lineno=p.lineno(1))
 
+def p_function_declaration(p):
+    '''
+    function_declaration : func_prototype LBRACE statements RBRACE
+    '''
+    p[0] = FunctionDeclaration(p[1], p[3], lineno=p[1].lineno)
+
 def p_if_statement(p):
     '''
     if_statement : IF expression LBRACE statements RBRACE
@@ -206,6 +218,12 @@ def p_while_statement(p):
     while_statement : WHILE expression LBRACE statements RBRACE
     '''
     p[0] = WhileStatement(p[2], p[4], lineno=p.lineno(1))
+
+def p_return_statement(p):
+    '''
+    return_statement : RETURN expression SEMI
+    '''
+    p[0] = ReturnStatement(p[2], lineno=p.lineno(1))
 
 ##
 ## Expressions and Expression Lists

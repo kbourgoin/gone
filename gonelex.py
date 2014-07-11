@@ -37,6 +37,7 @@ Reserved Keywords:
     IF      : 'if'
     ELSE    : 'else'
     WHILE   : 'while'
+    RETURN  : 'return'
 
 Identifiers:   (Same rules as for Python)
     ID      : Text starting with a letter or '_', followed by any number
@@ -122,7 +123,7 @@ tokens = [
     'COMMA', 'LBRACE', 'RBRACE',
 
     # Flow Control Keywords
-    'IF', 'ELSE', 'WHILE',
+    'IF', 'ELSE', 'WHILE', 'RETURN',
 
     # Boolean operators
     'LT', 'LTE', 'GT', 'GTE', 'EQ', 'NEQ', 'NOT', 'OR', 'AND',
@@ -237,6 +238,7 @@ def t_ID(t):
                 'if': 'IF',
                 'else': 'ELSE',
                 'while': 'WHILE',
+                'return': 'RETURN',
                 }
     t.type = keywords.get(t.value, 'ID')
     if t.type == 'TRUE':
