@@ -17,6 +17,12 @@ statement :  const_declaration
           |  extern_declaration
           |  assign_statement
           |  print_statement
+          |  if_statment
+          |  while_statement
+
+if_statement : IF ( expression )
+
+while_statement : WHILE ( expression )
 
 const_declaration : CONST ID = expression ;
 
@@ -130,7 +136,7 @@ def p_statements(p):
         p[0] = p[1]
         p[0].statement_list.append(p[2])
     else:
-        p[0] = Statements([p[1]], lineno=p.lineno(1))
+        p[0] = Statements([p[1]], lineno=p[1].lineno)
 
 def p_statement(p):
     '''
@@ -139,6 +145,8 @@ def p_statement(p):
               |  extern_declaration
               |  const_declaration
               |  var_declaration
+              |  if_statement
+              |  while_statement
     '''
     p[0] = p[1]
 
@@ -180,6 +188,24 @@ def p_extern_declaration(p):
     extern_declaration : EXTERN func_prototype SEMI
     '''
     p[0] = ExternDeclaration(p[2], lineno=p.lineno(1))
+
+def p_if_statement(p):
+    '''
+    if_statement : IF expression LBRACE statements RBRACE
+    '''
+    p[0] = IfStatement(p[2], p[4], None, lineno=p.lineno(1))
+
+def p_if_else_statement(p):
+    '''
+    if_statement : IF expression LBRACE statements RBRACE ELSE LBRACE statements RBRACE
+    '''
+    p[0] = IfStatement(p[2], p[4], p[8], lineno=p.lineno(1))
+
+def p_while_statement(p):
+    '''
+    while_statement : WHILE expression LBRACE statements RBRACE
+    '''
+    p[0] = WhileStatement(p[2], p[4], lineno=p.lineno(1))
 
 ##
 ## Expressions and Expression Lists

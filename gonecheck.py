@@ -270,6 +270,23 @@ class CheckProgramVisitor(NodeVisitor):
     def visit_Literal(self, node):
         node.type = types.get_type(node.value)
 
+    def visit_IfStatement(self, node):
+        self.visit(node.relation)
+        self.visit(node.if_body)
+        self.visit(node.else_body)
+
+        if node.relation.type != types.BoolType:
+            error(node.lineno, 'If statement must use bool test')
+            node.type = TypeError
+
+    def visit_WhileStatement(self, node):
+        self.visit(node.relation)
+        self.visit(node.while_body)
+
+        if node.relation.type != types.BoolType:
+            error(node.lineno, 'If statement must use bool test')
+            node.type = TypeError
+
 
 # ----------------------------------------------------------------------
 #                       DO NOT MODIFY ANYTHING BELOW

@@ -91,6 +91,12 @@ class AssignStatement(AST):
 class BinaryOp(AST):
     _fields = ['op', 'left', 'right']
 
+class IfStatement(AST):
+    _fields = ['relation', 'if_body', 'else_body']
+
+class WhileStatement(AST):
+    _fields = ['relation', 'while_body']
+
 class ConstDeclaration(AST):
     _fields = ['name', 'expression']
 

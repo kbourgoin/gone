@@ -16,6 +16,8 @@ instructions.
 Further instructions are contained in the comments.
 '''
 
+import goneast
+
 # LLVM imports. Don't change this.
 from llvm import core
 from llvm.core import Module, Builder, Function, Type, Constant, GlobalVariable
@@ -45,59 +47,134 @@ typemap = {
 # to the interpreter written in Project 4.  See specific comments
 # in the class.
 
+class LLVMBlockVisitor(goneast.NodeVisitor):
+
+    def __init__(self, name="module"):
+        self.llvm = GenerateLLVM()
+        self._next_block = 0
+
+    def generate_llvm(self, first_block):
+        self.make_basic_block([], 'start') # open a block for writing
+        self.visit(first_block)
+        #self.llvm.builder.position_at_end(first_block.llvm_end)
+        end = first_block
+        while end.next_block is not None:
+            end = end.next_block
+        #self.llvm.builder.position_at_end(end.llvm_end)
+        self.llvm.builder.ret_void()
+
+    def new_block_name(self):
+        out = 'b{}'.format(self._next_block)
+        self._next_block += 1
+        return out
+
+    def make_basic_block(self, instructions, name=None):
+        name = name or self.new_block_name()
+        block = self.llvm.function.append_basic_block(name)
+        self.llvm.block = block
+        self.llvm.builder = Builder.new(self.llvm.block)
+        self.llvm.generate_code(instructions)
+        return block
+
+    def visit_BasicBlock(self, block):
+        print('visit_BasicBlock')
+        # Start a new block and point the current one here
+        llvm_block = self.llvm.function.append_basic_block('bl')
+        self.llvm.builder.branch(llvm_block)
+        self.llvm.block = llvm_block
+        self.llvm.builder = Builder.new(self.llvm.block)
+        # Add instructions and move on to next block
+        self.llvm.generate_code(block.instructions)
+        self.visit(block.next_block)
+
+    def visit_IfBlock(self, block):
+        print('visit_IfBlock')
+        # Creation the relation block and point the current block here
+        relation_block = self.llvm.function.append_basic_block('if')
+        self.llvm.builder.branch(relation_block)
+        self.llvm.block = relation_block
+        self.llvm.builder = Builder.new(self.llvm.block)
+        self.llvm.generate_code(block.instructions)
+
+        # Create Merge Block
+        merge_block = self.llvm.function.append_basic_block('fi')
+
+        # If/Else Blocks
+        if_block = self.llvm.function.append_basic_block('tt')
+        self.llvm.block = if_block
+        self.llvm.builder = Builder.new(self.llvm.block)
+        self.visit(block.if_branch)
+        self.llvm.builder.branch(merge_block)
+        if block.else_branch:
+            else_block = self.llvm.function.append_basic_block('ff')
+            self.llvm.block = else_block
+            self.llvm.builder = Builder.new(self.llvm.block)
+            self.visit(block.else_branch)
+            self.llvm.builder.branch(merge_block)
+
+        # Comparison
+        self.llvm.builder.position_at_end(relation_block)
+        if block.else_branch:
+            self.llvm.builder.cbranch(self.llvm.temps[block.gen_location],
+                                      if_block, else_block)
+        else:
+            self.llvm.builder.cbranch(self.llvm.temps[block.gen_location],
+                                      if_block, merge_block)
+
+        # Move to end of merge block and visit the next node
+        self.llvm.builder.position_at_end(merge_block) # end at the end
+        self.visit(block.next_block)
+
+    def visit_WhileBlock(self, block):
+        print('visit_WhileBlock')
+        # Relation/Body Block w/Loop Back
+        relation_block = self.make_basic_block(block.instructions, name="wh_rel")
+
+        # Merge Block
+        next_block = self.make_basic_block([], name="wh_nxt")
+
+        self.visit(block.while_body)
+        end = block.while_body
+        while end.next_block is not None:
+            end = end.next_block
+        self.llvm.builder.position_at_end(end.llvm_end)
+        self.llvm.builder.branch(relation_block)
+
+        # Branch relation to body or next block
+        self.llvm.builder.position_at_end(relation_block)
+        self.llvm.builder.cbranch(self.llvm.temps[block.gen_location],
+                                  block.while_body.llvm_start,
+                                  next_block)
+
+        # Visit the next block
+        self.visit(block.next_block)
+        self.llvm.builder.position_at_end(next_block) # end at the end
+
+        block.llvm_start = relation_block
+        block.llvm_end = next_block
+        import pdb; pdb.set_trace()
+
+
 class GenerateLLVM(object):
     def __init__(self,name="module"):
-        # Perform the basic LLVM initialization.  You need the following parts:
-        #
-        #    1.  A top-level Module object
-        #    2.  A Function instance in which to insert code
-        #    3.  A Builder instance to generate instructions
-        #
-        # Note: at this point in the project, we don't have any user-defined
-        # functions so we're just going to emit all LLVM code into a top
-        # level function void main() { ... }.   This will get changed later.
-
         self.module = Module.new(name)
         self.function = Function.new(self.module,
                                      Type.function(Type.void(), [], False),
                                      "main")
-        self.block = self.function.append_basic_block('entry')
-        self.builder = Builder.new(self.block)
-
-        # Dictionary that holds all of the global variable/function declarations.
-        # Any declaration in the Gone source code is going to get an entry here
+        #self.block = self.function.append_basic_block('entry')
+        #self.builder = Builder.new(self.block)
         self.vars = {}
-
-        # Dictionary that holds all of the temporary variables created in
-        # the intermediate code.   For example, if you had an expression
-        # like this:
-        #
-        #      a = b + c*d
-        #
-        # The corresponding intermediate code might look like this:
-        #
-        #      ('load_int', 'b', 'int_1')
-        #      ('load_int', 'c', 'int_2')
-        #      ('load_int', 'd', 'int_3')
-        #      ('mul_int', 'int_2','int_3','int_4')
-        #      ('add_int', 'int_1','int_4','int_5')
-        #      ('store_int', 'int_5', 'a')
-        #
-        # The self.temp dictionary below is used to map names such as 'int_1',
-        # 'int_2' to their corresponding LLVM values.  Essentially, every time
-        # you make anything in LLVM, it gets stored here.
         self.temps = {}
-
-        # Initialize the runtime library functions (see below)
         self.declare_runtime_library()
 
     def declare_runtime_library(self):
-        # Certain functions such as I/O and string handling are often easier
-        # to implement in an external C library.  This method should make
-        # the LLVM declarations for any runtime functions to be used
-        # during code generation.    Please note that runtime function
-        # functions are implemented in C in a separate file gonert.c
-
+        """
+        Certain functions such as I/O and string handling are often easier
+        to implement in an external C library.  This method should make
+        the LLVM declarations for any runtime functions to be used
+        during code generation.    Please note that runtime function
+        functions are implemented in C in a separate file gonert.c
+        """
         self.runtime = {}
 
         # Declare printing functions
@@ -118,20 +195,12 @@ class GenerateLLVM(object):
                                                    "_print_string")
 
     def generate_code(self, ircode):
-        # Given a sequence of SSA intermediate code tuples, generate LLVM
-        # instructions using the current builder (self.builder).  Each
-        # opcode tuple (opcode, args) is dispatched to a method of the
-        # form self.emit_opcode(args)
-        for op in ircode.code:
+        for op in ircode:
             opcode = op[0]
             if hasattr(self, "emit_"+opcode):
                 getattr(self, "emit_"+opcode)(*op[1:])
             else:
                 print("Warning: No emit_"+opcode+"() method")
-
-        # Add a return statement.  Note, at this point, we don't really have
-        # user-defined functions so this is a bit of hack--it may be removed later.
-        self.builder.ret_void()
 
     # ----------------------------------------------------------------------
     # Opcode implementation.   You must implement the opcodes.  A few
@@ -383,6 +452,7 @@ def main():
     import goneparse
     import gonecheck
     import gonecode
+    import goneblock
     import sys
     import ctypes
     from errors import subscribe_errors, errors_reported
@@ -399,17 +469,17 @@ def main():
         gonecheck.check_program(program)
         # If no errors occurred, generate code
         if not errors_reported():
-            code = gonecode.generate_code(program)
+            blocks = gonecode.generate_code(program)
             # Emit the code sequence
-            g = GenerateLLVM()
-            g.generate_code(code)
-            print(g.module)
+            bv = LLVMBlockVisitor()
+            bv.generate_llvm(blocks.first_block)
+            print(bv.llvm.module)
 
             # Verify and run function that was created during code generation
             print(":::: RUNNING ::::")
-            g.function.verify()
-            llvm_executor = ExecutionEngine.new(g.module)
-            llvm_executor.run_function(g.function, [])
+            bv.llvm.function.verify()
+            llvm_executor = ExecutionEngine.new(bv.llvm.module)
+            llvm_executor.run_function(bv.llvm.function, [])
 
 if __name__ == '__main__':
     main()

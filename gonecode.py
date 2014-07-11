@@ -162,8 +162,11 @@ To start, your SSA code should only contain the following operators:
        ('print_type',source)              # Print value of source
 '''
 
-import goneast
 from collections import defaultdict
+
+import goneast
+
+from goneblock import BasicBlock, IfBlock, WhileBlock, TerminalBlock
 
 # STEP 1: Map map operator symbol names such as +, -, *, /
 # to actual opcode names 'add','sub','mul','div' to be emitted in
@@ -204,10 +207,19 @@ class GenerateCode(goneast.NodeVisitor):
          self.versions = defaultdict(int)
 
          # The generated code (list of tuples)
-         self.code = []
+         self.first_block = BasicBlock()
+         self.current_block = self.first_block
 
          # A list of external declarations (and types)
          self.externs = []
+
+    def __iter__(self):
+        block = self.first_block
+        while True:
+            yield block
+            block = block.next_block
+            if block is None:
+                break
 
     def new_temp(self, typeobj):
          '''
@@ -217,17 +229,16 @@ class GenerateCode(goneast.NodeVisitor):
          self.versions[typeobj.name] += 1
          return name
 
-    # You must implement visit_Nodename methods for all of the other
-    # AST nodes.  In your code, you will need to make instructions
-    # and append them to the self.code list.
-    #
-    # A few sample methods follow.  You may have to adjust depending
-    # on the names of the AST nodes you've defined.
-
     def visit_Program(self, node):
         self.visit(node.statements)
 
     def visit_Statements(self, node):
+        # No need to chain together empty blocks
+        if not isinstance(self.current_block, BasicBlock) or self.current_block.instructions:
+            blk = BasicBlock()
+            self.current_block.next_block = blk
+            self.current_block = blk
+        start = self.current_block
         for s in node.statement_list:
             self.visit(s)
 
@@ -235,7 +246,7 @@ class GenerateCode(goneast.NodeVisitor):
         self.visit(node.expression)
         inst = ('print_'+node.expression.type.name,
                 node.expression.gen_location)
-        self.code.append(inst)
+        self.current_block.append(inst)
 
     def visit_UnaryOp(self, node):
         self.visit(node.operand)
@@ -250,7 +261,7 @@ class GenerateCode(goneast.NodeVisitor):
             # Create the opcode and append to list
             opcode = unary_ops[node.op] + "_"+node.operand.type.name
             inst = (opcode, node.operand.gen_location, target)
-            self.code.append(inst)
+            self.current_block.append(inst)
 
             # Store location of the result on the node
             node.gen_location = target
@@ -265,7 +276,7 @@ class GenerateCode(goneast.NodeVisitor):
         # Create the opcode and append to list
         opcode = binary_ops[node.op] + "_"+node.left.type.name
         inst = (opcode, node.left.gen_location, node.right.gen_location, target)
-        self.code.append(inst)
+        self.current_block.append(inst)
 
         # Store location of the result on the node
         node.gen_location = target
@@ -276,7 +287,7 @@ class GenerateCode(goneast.NodeVisitor):
         inst = ('extern_func',
                 fn.name, fn.output_typename.type.name,
                 ) + tuple(p.type.name for p in fn.parameters)
-        self.code.append(inst)
+        self.current_block.append(inst)
 
     def visit_FunctionPrototype(self, node):
         pass
@@ -291,27 +302,27 @@ class GenerateCode(goneast.NodeVisitor):
         inst = ('call_func',
                 node.fn.name,
                 ) + tuple(p.gen_location for p in node.parameters) + (target,)
-        self.code.append(inst)
+        self.current_block.append(inst)
         node.gen_location = target
 
     def visit_AssignStatement(self, node):
         self.visit(node.expression)
         self.visit(node.location)
-        self.code.append(('store_{}'.format(node.type.name),
+        self.current_block.append(('store_{}'.format(node.type.name),
                           node.expression.gen_location,
                           node.location.name))
 
     def visit_ConstDeclaration(self, node):
-        self.code.append(('alloc_{}'.format(node.expression.type.name), node.name))
+        self.current_block.append(('alloc_{}'.format(node.expression.type.name), node.name))
         self.visit(node.expression)
-        self.code.append(('store_{}'.format(node.expression.type.name),
+        self.current_block.append(('store_{}'.format(node.expression.type.name),
                           node.expression.gen_location,
                           node.name))
 
     def visit_VarDeclaration(self, node):
-        self.code.append(('alloc_{}'.format(node.typename.type.name), node.name))
+        self.current_block.append(('alloc_{}'.format(node.typename.type.name), node.name))
         self.visit(node.expression)
-        self.code.append(('store_{}'.format(node.expression.type.name),
+        self.current_block.append(('store_{}'.format(node.expression.type.name),
                           node.expression.gen_location,
                           node.name))
 
@@ -320,7 +331,7 @@ class GenerateCode(goneast.NodeVisitor):
 
     def visit_LoadLocation(self, node):
         target = self.new_temp(node.type)
-        self.code.append(('load_{}'.format(node.type), node.name, target))
+        self.current_block.append(('load_{}'.format(node.type), node.name, target))
         node.gen_location = target
 
     def visit_StoreLocation(self, node):
@@ -328,8 +339,47 @@ class GenerateCode(goneast.NodeVisitor):
 
     def visit_Literal(self,node):
         target = self.new_temp(node.type)
-        self.code.append(('literal_'+node.type.name, node.value, target))
+        self.current_block.append(('literal_'+node.type.name, node.value, target))
         node.gen_location = target
+
+    def visit_IfStatement(self, node):
+        if_block = IfBlock()
+        self.current_block.next_block = if_block
+        self.current_block = if_block
+        # Set up the relation block
+        self.visit(node.relation)
+        if_block.gen_location = node.relation.gen_location
+        # Set up the if block
+        if_block.if_branch = BasicBlock()
+        self.current_block = if_block.if_branch
+        self.visit(node.if_body)
+        if node.else_body:
+            # set up the else block
+            if_block.else_branch = BasicBlock()
+            self.current_block = if_block.else_branch
+            self.visit(node.else_body)
+        self.current_block = if_block
+        self.current_block.next_block = None # got set wrongly
+        # Reset back to being on a BasicBlock
+        if_block.next_block = BasicBlock()
+        self.current_block = if_block.next_block
+
+    def visit_WhileStatement(self, node):
+        while_block = WhileBlock()
+        self.current_block.next_block = while_block
+        self.current_block = while_block
+        # Set up the relation block
+        self.visit(node.relation)
+        while_block.gen_location = node.relation.gen_location
+        # Set up the body of the while
+        while_block.while_body = BasicBlock()
+        self.current_block = while_block.while_body
+        self.visit(node.while_body)
+        self.current_block = while_block
+        # Reset back to being on a BasicBlock
+        while_block.next_block = BasicBlock()
+        self.current_block = while_block.next_block
+
 
 # STEP 3: Testing
 #
@@ -360,6 +410,7 @@ def main():
     import gonecheck
     import sys
     from errors import subscribe_errors, errors_reported
+    from pprint import pformat
     lexer = gonelex.make_lexer()
     parser = goneparse.make_parser()
     with subscribe_errors(lambda msg: sys.stdout.write(msg+"\n")):
@@ -369,9 +420,7 @@ def main():
         # If no errors occurred, generate code
         if not errors_reported():
             code = generate_code(program)
-            # Emit the code sequence
-            for inst in code.code:
-                print(inst)
+            print(code.first_block)
 
 if __name__ == '__main__':
     main()

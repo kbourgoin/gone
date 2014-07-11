@@ -34,6 +34,9 @@ Reserved Keywords:
     EXTERN  : 'extern'
     TRUE    : 'true'
     FALSE   : 'false'
+    IF      : 'if'
+    ELSE    : 'else'
+    WHILE   : 'while'
 
 Identifiers:   (Same rules as for Python)
     ID      : Text starting with a letter or '_', followed by any number
@@ -116,7 +119,10 @@ tokens = [
     # Operators and delimiters
     'PLUS', 'MINUS', 'TIMES', 'DIVIDE',
     'ASSIGN', 'SEMI', 'LPAREN', 'RPAREN',
-    'COMMA',
+    'COMMA', 'LBRACE', 'RBRACE',
+
+    # Flow Control Keywords
+    'IF', 'ELSE', 'WHILE',
 
     # Boolean operators
     'LT', 'LTE', 'GT', 'GTE', 'EQ', 'NEQ', 'NOT', 'OR', 'AND',
@@ -144,6 +150,8 @@ t_SEMI      = r';'
 t_LPAREN    = r'\('
 t_RPAREN    = r'\)'
 t_COMMA     = r','
+t_LBRACE    = r'{'
+t_RBRACE    = r'}'
 
 t_EQ        = r'=='
 t_NEQ       = r'!='
@@ -226,6 +234,9 @@ def t_ID(t):
                 'extern': 'EXTERN',
                 'true': 'TRUE',
                 'false': 'FALSE',
+                'if': 'IF',
+                'else': 'ELSE',
+                'while': 'WHILE',
                 }
     t.type = keywords.get(t.value, 'ID')
     if t.type == 'TRUE':
