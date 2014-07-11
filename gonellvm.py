@@ -76,39 +76,43 @@ class LLVMBlockVisitor(goneast.NodeVisitor):
         self.llvm.generate_code(instructions)
         return block
 
+    def start_block(self, name, add_branch=False):
+        """Start a new basic block and move the builder there
+
+        :param name: the name
+        :param add_branch: if specified, add a jump from the current block
+                           to the new one before moving the builder to the
+                           new block
+        """
+        output = self.llvm.function.append_basic_block(name)
+        if add_branch:
+            self.llvm.builder.branch(output)
+        self.llvm.block = output
+        self.llvm.builder = Builder.new(output)
+        return output
+
     def visit_BasicBlock(self, block):
         print('visit_BasicBlock')
-        # Start a new block and point the current one here
-        llvm_block = self.llvm.function.append_basic_block('bl')
-        self.llvm.builder.branch(llvm_block)
-        self.llvm.block = llvm_block
-        self.llvm.builder = Builder.new(self.llvm.block)
-        # Add instructions and move on to next block
+        # Start a new block and add instructions
+        self.start_block('bl', add_branch=True)
         self.llvm.generate_code(block.instructions)
         self.visit(block.next_block)
 
     def visit_IfBlock(self, block):
         print('visit_IfBlock')
         # Creation the relation block and point the current block here
-        relation_block = self.llvm.function.append_basic_block('if')
-        self.llvm.builder.branch(relation_block)
-        self.llvm.block = relation_block
-        self.llvm.builder = Builder.new(self.llvm.block)
+        relation_block = self.start_block('if', add_branch=True)
         self.llvm.generate_code(block.instructions)
 
         # Create Merge Block
         merge_block = self.llvm.function.append_basic_block('fi')
 
         # If/Else Blocks
-        if_block = self.llvm.function.append_basic_block('tt')
-        self.llvm.block = if_block
-        self.llvm.builder = Builder.new(self.llvm.block)
+        if_block = self.start_block('tt')
         self.visit(block.if_branch)
         self.llvm.builder.branch(merge_block)
         if block.else_branch:
-            else_block = self.llvm.function.append_basic_block('ff')
-            self.llvm.block = else_block
-            self.llvm.builder = Builder.new(self.llvm.block)
+            else_block = self.start_block('ff')
             self.visit(block.else_branch)
             self.llvm.builder.branch(merge_block)
 
@@ -128,31 +132,25 @@ class LLVMBlockVisitor(goneast.NodeVisitor):
     def visit_WhileBlock(self, block):
         print('visit_WhileBlock')
         # Relation/Body Block w/Loop Back
-        relation_block = self.make_basic_block(block.instructions, name="wh_rel")
+        relation_block = self.start_block('wh', add_branch=True)
+        self.llvm.generate_code(block.instructions)
 
         # Merge Block
-        next_block = self.make_basic_block([], name="wh_nxt")
+        merge_block = self.make_basic_block([], name="hw")
 
+        # While body
+        body_block = self.start_block('wb')
         self.visit(block.while_body)
-        end = block.while_body
-        while end.next_block is not None:
-            end = end.next_block
-        self.llvm.builder.position_at_end(end.llvm_end)
         self.llvm.builder.branch(relation_block)
 
         # Branch relation to body or next block
         self.llvm.builder.position_at_end(relation_block)
         self.llvm.builder.cbranch(self.llvm.temps[block.gen_location],
-                                  block.while_body.llvm_start,
-                                  next_block)
+                                  body_block, merge_block)
 
         # Visit the next block
+        self.llvm.builder.position_at_end(merge_block) # end at the end
         self.visit(block.next_block)
-        self.llvm.builder.position_at_end(next_block) # end at the end
-
-        block.llvm_start = relation_block
-        block.llvm_end = next_block
-        import pdb; pdb.set_trace()
 
 
 class GenerateLLVM(object):
