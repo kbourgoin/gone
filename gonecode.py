@@ -165,6 +165,7 @@ To start, your SSA code should only contain the following operators:
 from collections import defaultdict
 
 import goneast
+import gonetype
 
 from goneblock import BasicBlock, IfBlock, WhileBlock, FunctionBlock
 
@@ -213,6 +214,9 @@ class GenerateCode(goneast.NodeVisitor):
          # A list of external declarations (and types)
          self.externs = []
 
+         # A dict of functions declared
+         self.functions = {}
+
     def __iter__(self):
         block = self.first_block
         while True:
@@ -228,6 +232,48 @@ class GenerateCode(goneast.NodeVisitor):
          name = "__%s_%d" % (typeobj.name, self.versions[typeobj.name])
          self.versions[typeobj.name] += 1
          return name
+
+    def to_functions(self):
+        """Convert the code tree to a list of functions
+
+        The first function in the list will be the entry point
+        """
+        # Create an entry function
+        entry_fn = FunctionBlock()
+        entry_fn.instructions.append(('declare_func', '__start', 'int', []))
+        entry_fn.body = BasicBlock()
+        curr_entry_block = entry_fn.body # will keep track of entry body
+
+        output = []
+        block = self.first_block
+        while block is not None:
+            if isinstance(block, FunctionBlock):
+                output.append(block)
+                prev_block = block
+                block = block.next_block
+                # The old exit point is no longer relevant
+                prev_block.next_block = None
+            else:
+                # Add to chain for entry_fn.block
+                curr_entry_block.next_block = block
+                curr_entry_block = block
+                block = block.next_block
+
+        # Make the `return main();` statement for the entry function
+        main_fn = self.functions['main']
+        entry_ret_call = goneast.FunctionCall('main', [])
+        entry_ret_call.type = main_fn.output_typename.type
+        entry_ret_call.fn = main_fn
+        entry_ret = goneast.ReturnStatement(entry_ret_call)
+
+        # Create a BasicBlock with that and attach that to the entry body
+        self.current_block = BasicBlock()
+        self.visit(entry_ret)
+        curr_entry_block.next_block = self.current_block
+
+        output.append(entry_fn)
+        return output
+
 
     ##
     ## Instruction Generators
@@ -358,6 +404,9 @@ class GenerateCode(goneast.NodeVisitor):
             self.visit(s)
 
     def visit_FunctionDeclaration(self, node):
+        # Remember functions declared
+        self.functions[node.prototype.name] = node.prototype
+
         # Create the new function block and link the current block to it
         func_block = FunctionBlock()
         self.current_block.next_block = func_block
@@ -431,16 +480,13 @@ class GenerateCode(goneast.NodeVisitor):
 # you may want to break the code down into more manageable chunks.
 # Think about unit testing.
 
-# ----------------------------------------------------------------------
-#                       DO NOT MODIFY ANYTHING BELOW
-# ----------------------------------------------------------------------
 def generate_code(node):
     '''
     Generate SSA code from the supplied AST node.
     '''
     gen = GenerateCode()
     gen.visit(node)
-    return gen
+    return gen.to_functions()
 
 def main():
     import gonelex
@@ -457,8 +503,9 @@ def main():
         gonecheck.check_program(program)
         # If no errors occurred, generate code
         if not errors_reported():
-            code = generate_code(program)
-            print(code.first_block)
+            functions = generate_code(program)
+            for fn in functions:
+                print(fn, '\n')
 
 if __name__ == '__main__':
     main()
