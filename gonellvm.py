@@ -54,13 +54,14 @@ class LLVMBlockVisitor(goneast.NodeVisitor):
         self._next_block = 0
 
     def generate_llvm(self, first_block):
-        self.make_basic_block([], 'start') # open a block for writing
+        # Start a basic block to write to
+        start_llvm = self.llvm.function.append_basic_block('start')
+        self.llvm.builder = Builder.new(start_llvm)
+
+         # Visit all nodes
         self.visit(first_block)
-        #self.llvm.builder.position_at_end(first_block.llvm_end)
-        end = first_block
-        while end.next_block is not None:
-            end = end.next_block
-        #self.llvm.builder.position_at_end(end.llvm_end)
+
+        # Return nothing
         self.llvm.builder.ret_void()
 
     def new_block_name(self):
@@ -70,86 +71,78 @@ class LLVMBlockVisitor(goneast.NodeVisitor):
 
     def make_basic_block(self, instructions, name=None):
         name = name or self.new_block_name()
-        block = self.llvm.function.append_basic_block(name)
-        self.llvm.block = block
-        self.llvm.builder = Builder.new(self.llvm.block)
-        self.llvm.generate_code(instructions)
         return block
-
-    def start_block(self, name, add_branch=False):
-        """Start a new basic block and move the builder there
-
-        :param name: the name
-        :param add_branch: if specified, add a jump from the current block
-                           to the new one before moving the builder to the
-                           new block
-        """
-        output = self.llvm.function.append_basic_block(name)
-        if add_branch:
-            self.llvm.builder.branch(output)
-        self.llvm.block = output
-        self.llvm.builder = Builder.new(output)
-        return output
 
     def visit_BasicBlock(self, block):
         print('visit_BasicBlock')
-        # Start a new block and add instructions
-        self.start_block('bl', add_branch=True)
+        # Start a new block
+        block_llvm = self.llvm.function.append_basic_block('bl')
+        self.llvm.builder.branch(block_llvm)
+        self.llvm.builder.position_at_end(block_llvm)
+        # Add instructions and move on
         self.llvm.generate_code(block.instructions)
         self.visit(block.next_block)
 
     def visit_IfBlock(self, block):
         print('visit_IfBlock')
-        # Creation the relation block and point the current block here
-        relation_block = self.start_block('if', add_branch=True)
-        self.llvm.generate_code(block.instructions)
-
-        # Create Merge Block
-        merge_block = self.llvm.function.append_basic_block('fi')
-
-        # If/Else Blocks
-        if_block = self.start_block('tt')
-        self.visit(block.if_branch)
-        self.llvm.builder.branch(merge_block)
+        # Make blocks
+        if_llvm = self.llvm.function.append_basic_block('if')
+        then_llvm = self.llvm.function.append_basic_block('it')
+        merge_llvm = self.llvm.function.append_basic_block('fi')
         if block.else_branch:
-            else_block = self.start_block('ff')
-            self.visit(block.else_branch)
-            self.llvm.builder.branch(merge_block)
+            else_llvm = self.llvm.function.append_basic_block('ff')
 
-        # Comparison
-        self.llvm.builder.position_at_end(relation_block)
+        # Current block should jump to the conditional
+        self.llvm.builder.branch(if_llvm)
+
+        # Conditional Block
+        self.llvm.builder.position_at_end(if_llvm)
+        self.llvm.generate_code(block.instructions)
         if block.else_branch:
             self.llvm.builder.cbranch(self.llvm.temps[block.gen_location],
-                                      if_block, else_block)
+                                      then_llvm, else_llvm)
         else:
             self.llvm.builder.cbranch(self.llvm.temps[block.gen_location],
-                                      if_block, merge_block)
+                                      then_llvm, merge_llvm)
 
-        # Move to end of merge block and visit the next node
-        self.llvm.builder.position_at_end(merge_block) # end at the end
+        # Then Block
+        self.llvm.builder.position_at_end(then_llvm)
+        self.visit(block.if_branch)
+        self.llvm.builder.branch(merge_llvm)
+
+        # Else Block
+        if block.else_branch:
+            self.llvm.builder.position_at_end(else_llvm)
+            self.visit(block.else_branch)
+            self.llvm.builder.branch(merge_llvm)
+
+        # Finish at the end of the merge block
+        self.llvm.builder.position_at_end(merge_llvm)
         self.visit(block.next_block)
 
     def visit_WhileBlock(self, block):
         print('visit_WhileBlock')
-        # Relation/Body Block w/Loop Back
-        relation_block = self.start_block('wh', add_branch=True)
+        # Make blocks
+        test_llvm = self.llvm.function.append_basic_block('wh')
+        body_llvm = self.llvm.function.append_basic_block('wb')
+        merge_llvm = self.llvm.function.append_basic_block('hw')
+
+        # Current block should jump to the conditional
+        self.llvm.builder.branch(test_llvm)
+
+        # Conditional Block
+        self.llvm.builder.position_at_end(test_llvm)
         self.llvm.generate_code(block.instructions)
-
-        # Merge Block
-        merge_block = self.make_basic_block([], name="hw")
-
-        # While body
-        body_block = self.start_block('wb')
-        self.visit(block.while_body)
-        self.llvm.builder.branch(relation_block)
-
-        # Branch relation to body or next block
-        self.llvm.builder.position_at_end(relation_block)
         self.llvm.builder.cbranch(self.llvm.temps[block.gen_location],
-                                  body_block, merge_block)
+                                  body_llvm, merge_llvm)
 
-        # Visit the next block
-        self.llvm.builder.position_at_end(merge_block) # end at the end
+        # While Body
+        self.llvm.builder.position_at_end(body_llvm)
+        self.visit(block.while_body)
+        self.llvm.builder.branch(test_llvm)
+
+        # Finish at the end of the merge block
+        self.llvm.builder.position_at_end(merge_llvm)
         self.visit(block.next_block)
 
 
@@ -159,8 +152,6 @@ class GenerateLLVM(object):
         self.function = Function.new(self.module,
                                      Type.function(Type.void(), [], False),
                                      "main")
-        #self.block = self.function.append_basic_block('entry')
-        #self.builder = Builder.new(self.block)
         self.vars = {}
         self.temps = {}
         self.declare_runtime_library()
