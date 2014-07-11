@@ -166,7 +166,7 @@ from collections import defaultdict
 
 import goneast
 
-from goneblock import BasicBlock, IfBlock, WhileBlock
+from goneblock import BasicBlock, IfBlock, WhileBlock, FunctionBlock
 
 # STEP 1: Map map operator symbol names such as +, -, *, /
 # to actual opcode names 'add','sub','mul','div' to be emitted in
@@ -229,18 +229,12 @@ class GenerateCode(goneast.NodeVisitor):
          self.versions[typeobj.name] += 1
          return name
 
+    ##
+    ## Instruction Generators
+    ##
+
     def visit_Program(self, node):
         self.visit(node.statements)
-
-    def visit_Statements(self, node):
-        # No need to chain together empty blocks
-        if not isinstance(self.current_block, BasicBlock) or self.current_block.instructions:
-            blk = BasicBlock()
-            self.current_block.next_block = blk
-            self.current_block = blk
-        start = self.current_block
-        for s in node.statement_list:
-            self.visit(s)
 
     def visit_PrintStatement(self,node):
         self.visit(node.expression)
@@ -341,6 +335,50 @@ class GenerateCode(goneast.NodeVisitor):
         target = self.new_temp(node.type)
         self.current_block.append(('literal_'+node.type.name, node.value, target))
         node.gen_location = target
+
+    def visit_ReturnStatement(self, node):
+        self.visit(node.expression)
+        self.current_block.append((
+            'return__{}'.format(node.expression.type.name),
+            node.expression.gen_location
+        ))
+
+    ##
+    ## Block Generators
+    ##
+
+    def visit_Statements(self, node):
+        # No need to chain together empty blocks
+        if not isinstance(self.current_block, BasicBlock) or self.current_block.instructions:
+            blk = BasicBlock()
+            self.current_block.next_block = blk
+            self.current_block = blk
+        start = self.current_block
+        for s in node.statement_list:
+            self.visit(s)
+
+    def visit_FunctionDeclaration(self, node):
+        # Create the new function block and link the current block to it
+        func_block = FunctionBlock()
+        self.current_block.next_block = func_block
+
+        # Write the protype declaration to the instructions
+        self.current_block = func_block
+        self.visit(node.prototype)
+        fn = node.prototype
+        inst = ('declare_func',
+                fn.name, fn.output_typename.type.name,
+                ) + tuple(p.type.name for p in fn.parameters)
+        func_block.instructions.append(inst)
+
+        # Create the body block as a BasicBlock
+        func_block.body = BasicBlock()
+        self.current_block = func_block.body
+        self.visit(node.statements)
+
+        # Create the next block as a BasicBlock before we move on
+        func_block.next_block = BasicBlock()
+        self.current_block = func_block.next_block
 
     def visit_IfStatement(self, node):
         if_block = IfBlock()

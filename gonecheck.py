@@ -116,9 +116,10 @@ class CheckProgramVisitor(NodeVisitor):
 
     def visit_Program(self, node):
         self.visit(node.statements)
-        # TODO: Record Symbol Table?
-        from pprint import pprint
-        #pprint(self.symtab.maps)
+        # Make sure we have a main func
+        main = self.symtab.get('main')
+        if not isinstance(main, FunctionPrototype):
+            error(0, 'No main() defined')
 
     def visit_Statements(self, node):
         for s in node.statement_list:

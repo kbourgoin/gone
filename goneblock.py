@@ -32,6 +32,29 @@ class _Block(object):
 class BasicBlock(_Block):
     pass # nothing interesting here
 
+
+class FunctionBlock(_Block):
+    def __init__(self):
+        super().__init__()
+        # self.instructions will contain prototype declaration?
+        self.body = None
+
+    def __repr__(self):
+        out = self.__class__.__name__
+        # Instructions are the relation test
+        inst_str = pformat(self.instructions)
+        inst_str = inst_str.replace('\n', '\n\t    ')
+        out += '\n  Prototype: {}'.format(inst_str)
+        # Print out the body
+        body = self.body.__repr__()
+        body = body.replace('\n', '\n  ')
+        out += '\n  Body: {}'.format(body)
+        # There may be nothing afterwards
+        if self.next_block:
+            out += '\n\n{}'.format(self.next_block)
+        return out
+
+
 class IfBlock(_Block):
     def __init__(self):
         super().__init__()

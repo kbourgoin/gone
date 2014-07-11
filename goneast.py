@@ -143,7 +143,8 @@ class Statements(AST):
         """Check if this group of statements is terminal (has a return)"""
         for s in self.statement_list:
             if isinstance(s, ReturnStatement) or (
-               isinstance(s, IfStatement) and s.is_terminal(return_type)
+               isinstance(s, IfStatement) and s.is_terminal(return_type)) or (
+               isinstance(s, WhileStatement) and s.is_terminal(return_type)
                ):
                 if isinstance(s, ReturnStatement) and s.type != return_type:
                     error(self.lineno, "invalid return type: {}".format(return_type))
@@ -151,7 +152,6 @@ class Statements(AST):
                     error(self.lineno, "code after {} is unreachable".format(self.lineno))
                 return True # they all technically are terminal
         return False # nothing found
-
 
 class Statement(AST):
     _fields = ['declaration']
@@ -170,6 +170,9 @@ class VarDeclaration(AST):
 
 class WhileStatement(AST):
     _fields = ['relation', 'while_body']
+
+    def is_terminal(self, return_type):
+        return self.while_body.is_terminal(return_type)
 
 # ----------------------------------------------------------------------
 #                  DO NOT MODIFY ANYTHING BELOW HERE
