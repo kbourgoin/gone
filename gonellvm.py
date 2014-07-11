@@ -74,7 +74,7 @@ class LLVMBlockVisitor(goneast.NodeVisitor):
         self.llvm.generate_code(block.instructions)
         self.visit(block.next_block)
 
-    def visit_FunctionBlock(self, block):
+    def visit_FunctionBlock(self, block, initializer_fn=False):
         # Set up the builder to the top of this function
         name = block.instructions[0][1]
         self.llvm.function = self.llvm.vars[name]
@@ -82,24 +82,30 @@ class LLVMBlockVisitor(goneast.NodeVisitor):
         self.llvm.builder = Builder.new(start_llvm)
 
         # Make some scope for the function and add parameters
-        self.llvm.vars = self.llvm.vars.new_child()
-        for arg in self.llvm.vars[name].args:
+        if not initializer_fn:
+            self.llvm.vars = self.llvm.vars.new_child()
+        function = self.llvm.vars[name]
+        for arg in function.args:
             arg_v = self.llvm.builder.alloca(arg.type, name=arg.name)
             self.llvm.builder.store(arg, arg_v)
             self.llvm.vars[arg.name] = arg_v
 
         # Visit the block like normal
         self.visit(block.body)
-        self.llvm.vars = self.llvm.vars.parents # pop local scope off
+        if not initializer_fn:
+            self.llvm.vars = self.llvm.vars.parents # pop local scope off
 
     def visit_IfBlock(self, block):
         print('visit_IfBlock')
         # Make blocks
         if_llvm = self.llvm.function.append_basic_block('if')
-        then_llvm = self.llvm.function.append_basic_block('it')
-        merge_llvm = self.llvm.function.append_basic_block('fi')
+        then_llvm = self.llvm.function.append_basic_block('tt')
         if block.else_branch:
             else_llvm = self.llvm.function.append_basic_block('ff')
+        if block.is_terminal:
+            merge_llvm = None
+        else:
+            merge_llvm = self.llvm.function.append_basic_block('fi')
 
         # Current block should jump to the conditional
         self.llvm.builder.branch(if_llvm)
@@ -117,17 +123,25 @@ class LLVMBlockVisitor(goneast.NodeVisitor):
         # Then Block
         self.llvm.builder.position_at_end(then_llvm)
         self.visit(block.if_branch)
-        self.llvm.builder.branch(merge_llvm)
+        if not block.is_terminal:
+            self.llvm.builder.branch(merge_llvm)
 
         # Else Block
         if block.else_branch:
             self.llvm.builder.position_at_end(else_llvm)
             self.visit(block.else_branch)
-            self.llvm.builder.branch(merge_llvm)
+            if not block.is_terminal:
+                self.llvm.builder.branch(merge_llvm)
 
         # Finish at the end of the merge block
-        self.llvm.builder.position_at_end(merge_llvm)
-        self.visit(block.next_block)
+        if block.is_terminal:
+            self.llvm.builder.position_at_end(if_llvm) # shouldn't matter
+        else:
+            self.llvm.builder.position_at_end(merge_llvm)
+            self.visit(block.next_block)
+
+    def visit_InitializerFunctionBlock(self, block, initializer_fn=True):
+        self.visit_FunctionBlock(block, initializer_fn=True)
 
     def visit_WhileBlock(self, block):
         print('visit_WhileBlock')
@@ -191,17 +205,18 @@ class GenerateLLVM(object):
 
     def declare_function(self, func_block):
         """Declare a Function and add it to self.vars"""
-        _, name, *args, ret_type = func_block.instructions[0]
+        _, name, ret_type, *args = func_block.instructions[0]
+        args = [] if args == [[]] else args
         if not ret_type:
             ret_type = args[0]
             arg_types = []
         else:
-            arg_types = [typemap[t] for t in args[0::2]]
+            arg_types = [typemap[t] for t in args[1::2]]
         ret_type = typemap[ret_type]
         function = Function.new(
             self.module, Type.function(ret_type, arg_types, False), name
         )
-        for i, argname in enumerate(args[1::2]):
+        for i, argname in enumerate(args[0::2]):
             function.args[i].name = argname
         self.vars[name] = function
 
@@ -227,27 +242,36 @@ class GenerateLLVM(object):
     def emit_literal_string(self, value, target):
         pass
 
-    # Allocation of variables.  Declare as global variables and set to
-    # a sensible initial value.
-    def emit_alloc_int(self, name):
+    # Allocation of global variables
+    def emit_global_int(self, name):
         var = GlobalVariable.new(self.module, int_type, name)
         var.initializer = Constant.int(int_type, 0)
         self.vars[name] = var
 
-    def emit_alloc_float(self, name):
+    def emit_global_float(self, name):
         var = GlobalVariable.new(self.module, float_type, name)
         var.initializer = Constant.real(float_type, 0)
         self.vars[name] = var
 
-    def emit_alloc_bool(self, name):
+    def emit_global_bool(self, name):
         var = GlobalVariable.new(self.module, bool_type, name)
         var.initializer = Constant.int(bool_type, 0)
         self.vars[name] = var
 
-    def emit_alloc_string(self, name):
+    def emit_global_string(self, name):
         var = GlobalVariable.new(self.module, string_type, name)
         var.initializer = Constant.null(string_type)
         self.vars[name] = var
+
+    # Allocation of local variables
+    def emit_local_int(self, name):
+        self.vars[name] = self.builder.alloca(int_type, name=name)
+
+    def emit_local_float(self, name):
+        self.vars[name] = self.builder.alloca(float_type, name=name)
+
+    def emit_local_bool(self, name):
+        self.vars[name] = self.builder.alloca(bool_type, name=name)
 
 
     # Load/store instructions for variables.  Load needs to pull a
@@ -447,6 +471,12 @@ class GenerateLLVM(object):
     def emit_return_int(self, target):
         self.builder.ret(self.temps[target])
 
+    def emit_return_float(self, target):
+        self.builder.ret(self.temps[target])
+
+    def emit_return_bool(self, target):
+        self.builder.ret(self.temps[target])
+
 
 #######################################################################
 #                 DO NOT MODIFY ANYTHING BELOW HERE
@@ -484,7 +514,7 @@ def main():
             print(":::: RUNNING ::::")
             bv.llvm.function.verify()
             llvm_executor = ExecutionEngine.new(bv.llvm.module)
-            llvm_executor.run_function(bv.llvm.function, [])
+            llvm_executor.run_function(bv.llvm.vars['__start'], [])
 
 if __name__ == '__main__':
     main()

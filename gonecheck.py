@@ -236,6 +236,7 @@ class CheckProgramVisitor(NodeVisitor):
         else:
             self.symtab[node.name] = node
             node.type = node.expression.type
+            node.scope = 'local' if self.symtab.parents else 'global'
 
     def visit_VarDeclaration(self, node):
         self.visit(node.typename)
@@ -253,11 +254,13 @@ class CheckProgramVisitor(NodeVisitor):
             else:
                 node.type = node.expression.type
                 self.symtab[node.name] = node.expression
+                node.scope = 'local' if self.symtab.parents else 'global'
         else: # no expression -- use default (?)
             sym = Literal(node.typename.type.default, lineno=node.lineno)
             sym.type = node.typename.type
             self.symtab[node.name] = sym
             node.expression = sym
+            node.scope = 'local' if self.symtab.parents else 'global'
 
     def visit_Typename(self, node):
         if not isinstance(self.symtab.get(node.name), types.GoneType):

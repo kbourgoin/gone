@@ -169,7 +169,7 @@ from collections import defaultdict
 import goneast
 import gonetype
 
-from goneblock import BasicBlock, IfBlock, WhileBlock, FunctionBlock
+from goneblock import BasicBlock, IfBlock, WhileBlock, FunctionBlock, InitializerFunctionBlock
 
 # STEP 1: Map map operator symbol names such as +, -, *, /
 # to actual opcode names 'add','sub','mul','div' to be emitted in
@@ -241,7 +241,7 @@ class GenerateCode(goneast.NodeVisitor):
         The first function in the list will be the entry point
         """
         # Create an entry function
-        entry_fn = FunctionBlock()
+        entry_fn = InitializerFunctionBlock()
         entry_fn.instructions.append(('declare_func', '__start', 'int', []))
         entry_fn.body = BasicBlock()
         curr_entry_block = entry_fn.body # will keep track of entry body
@@ -273,7 +273,8 @@ class GenerateCode(goneast.NodeVisitor):
         self.visit(entry_ret)
         curr_entry_block.next_block = self.current_block
 
-        output.append(entry_fn)
+        # Prepend so globals are created before functions
+        output = [entry_fn] + output
         return output
 
 
@@ -355,14 +356,16 @@ class GenerateCode(goneast.NodeVisitor):
                           node.location.name))
 
     def visit_ConstDeclaration(self, node):
-        self.current_block.append(('alloc_{}'.format(node.expression.type.name), node.name))
+        alloc_fmt = 'local_{}' if node.scope == 'local' else 'global_{}'
+        self.current_block.append((alloc_fmt.format(node.expression.type.name), node.name))
         self.visit(node.expression)
         self.current_block.append(('store_{}'.format(node.expression.type.name),
                           node.expression.gen_location,
                           node.name))
 
     def visit_VarDeclaration(self, node):
-        self.current_block.append(('alloc_{}'.format(node.typename.type.name), node.name))
+        alloc_fmt = 'local_{}' if node.scope == 'local' else 'global_{}'
+        self.current_block.append((alloc_fmt.format(node.typename.type.name), node.name))
         self.visit(node.expression)
         self.current_block.append(('store_{}'.format(node.expression.type.name),
                           node.expression.gen_location,
@@ -435,6 +438,7 @@ class GenerateCode(goneast.NodeVisitor):
 
     def visit_IfStatement(self, node):
         if_block = IfBlock()
+        if_block.is_terminal = node.is_terminal
         self.current_block.next_block = if_block
         self.current_block = if_block
         # Set up the relation block

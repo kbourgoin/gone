@@ -83,6 +83,10 @@ class IfBlock(_Block):
         return out
 
 
+class InitializerFunctionBlock(FunctionBlock):
+    pass # so we know when we're looking at the special one
+
+
 class WhileBlock(_Block):
     def __init__(self):
         super().__init__()

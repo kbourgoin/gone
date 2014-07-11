@@ -114,8 +114,10 @@ class IfStatement(AST):
     def is_terminal(self, return_type):
         """Check if this `if` is terminal (has else and both return)"""
         if not self.else_body:
-            return False
-        return self.if_body.is_terminal(return_type) and self.else_body.is_terminal(return_type)
+            self.is_terminal = False
+        else:
+            self.is_terminal = self.if_body.is_terminal(return_type) and self.else_body.is_terminal(return_type)
+        return self.is_terminal
 
 
 class Literal(AST):
@@ -150,8 +152,10 @@ class Statements(AST):
                     error(self.lineno, "invalid return type: {}".format(return_type))
                 elif s != self.statement_list[-1]:
                     error(self.lineno, "code after {} is unreachable".format(self.lineno))
-                return True # they all technically are terminal
-        return False # nothing found
+                self.is_terminal = True # they all technically are terminal
+                return self.is_terminal
+        self.is_terminal = False # nothing found
+        return self.is_terminal
 
 class Statement(AST):
     _fields = ['declaration']
@@ -172,7 +176,8 @@ class WhileStatement(AST):
     _fields = ['relation', 'while_body']
 
     def is_terminal(self, return_type):
-        return self.while_body.is_terminal(return_type)
+        self.is_terminal = self.while_body.is_terminal(return_type)
+        return self.is_terminal
 
 # ----------------------------------------------------------------------
 #                  DO NOT MODIFY ANYTHING BELOW HERE
