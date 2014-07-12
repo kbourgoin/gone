@@ -23,7 +23,7 @@ func in_mandelbrot(x0 float, y0 float, n int) bool {
         x = xtemp;
         n = n - 1;
         if x*x + y*y > 4.0 {
-	    return false;
+    	    return false;
         }
     }
     return true;
@@ -42,7 +42,7 @@ func main() int {
              if in_mandelbrot(x,y,threshhold) {
                	r = putchar(42);
              } else {
-	        r = putchar(46);
+    	        r = putchar(46);
              }
              x = x + dx;
          }
@@ -51,7 +51,3 @@ func main() int {
      }
      return 0;
 }
-
-
-
-
