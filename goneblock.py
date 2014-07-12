@@ -8,11 +8,19 @@ class _Block(object):
         self.instructions = []
         self.next_block = None
 
-    def __repr__(self):
-        out = '{}: {}'.format(self.__class__.__name__, pformat(self.instructions))
-        if self.next_block:
-            out += '\n\n{}'.format(self.next_block)
-        return out
+    def _repr_instructions(self, indent):
+        return pformat(self.instructions).replace(
+            '\n', '\n  {}'.format(' ' * indent)
+        )
+
+    def __repr__(self, name=None, indent=0):
+        ind = ' ' * (indent+2)
+        return '{cls}:\n{ind}{ins}{nxt}'.format(
+            cls='{}{}'.format(' ' * indent, name or self.__class__.__name__),
+            ind=ind,
+            ins=self._repr_instructions(indent),
+            nxt='\n{}'.format(self.next_block.__repr__(indent=indent)) if self.next_block else '',
+        )
 
     def append(self, instruction):
         self.instructions.append(instruction)
@@ -31,20 +39,19 @@ class FunctionBlock(_Block):
         # self.instructions will contain prototype declaration?
         self.body = None
 
-    def __repr__(self):
-        out = self.__class__.__name__
-        # Instructions are the relation test
-        inst_str = pformat(self.instructions)
-        inst_str = inst_str.replace('\n', '\n\t    ')
-        out += '\n  Prototype: {}'.format(inst_str)
-        # Print out the body
-        body = self.body.__repr__()
-        body = body.replace('\n', '\n  ')
-        out += '\n  Body: {}'.format(body)
-        # There may be nothing afterwards
+    def __repr__(self, indent=0):
+        _, name, *params, ret_type = self.instructions[0]
         if self.next_block:
-            out += '\n\n{}'.format(self.next_block)
-        return out
+            nxt = '\n{}'.format(self.next_block.__repr__(indent=indent))
+        else:
+            nxt = ''
+        return 'Function: {name} {params} {ret}\n{bdy}{nxt}'.format(
+            name=name,
+            params=tuple(params),
+            ret=ret_type,
+            bdy=self.body.__repr__(indent=indent+2),
+            nxt=nxt
+        )
 
 
 class IfBlock(_Block):
@@ -54,25 +61,27 @@ class IfBlock(_Block):
         self.if_branch = None
         self.else_branch = None
 
-    def __repr__(self):
-        out = self.__class__.__name__
-        # Instructions are the relation test
-        inst_str = pformat(self.instructions)
-        inst_str = inst_str.replace('\n', '\n\t    ')
-        out += '\n  Relation: {}'.format(inst_str)
-        # If branch is always present
-        if_str = self.if_branch.__repr__()
-        if_str = if_str.replace('\n', '\n  ')
-        out += '\n  If: {}'.format(if_str)
-        # Else may not be
+    def __repr__(self, indent=0):
+        ind = ' ' * (indent+2)
         if self.else_branch:
-            else_str = self.else_branch.__repr__()
-            else_str = else_str.replace('\n', '\n  ')
-            out += '\n  Else: {}'.format(else_str)
-        # There may be nothing afterwards
+            els = '\n{ind}Else:\n{els}'.format(
+                ind=ind,
+                els=self.else_branch.__repr__(indent=indent+4)
+            )
+        else:
+            els = ''
         if self.next_block:
-            out += '\n\n{}'.format(self.next_block)
-        return out
+            nxt = '\n{}'.format(self.next_block.__repr__(indent=indent))
+        else:
+            nxt = ''
+        return '{cls}:\n{ind}Relation:\n{ind}  {rel}\n{ind}Then:\n{thn}{els}{nxt}'.format(
+            cls='{}{}'.format(' ' * indent, self.__class__.__name__),
+            ind=' ' * (indent+2),
+            rel=self._repr_instructions(indent+2),
+            thn=self.if_branch.__repr__(indent=indent+4),
+            els=els,
+            nxt=nxt,
+        )
 
 
 class InitializerFunctionBlock(FunctionBlock):
@@ -84,17 +93,16 @@ class WhileBlock(_Block):
         super().__init__()
         self.while_body = None
 
-    def __repr__(self):
-        out = self.__class__.__name__
-        # Instructions are the relation test
-        inst_str = pformat(self.instructions)
-        inst_str = inst_str.replace('\n', '\n\t    ')
-        out += '\n  Relation: {}'.format(inst_str)
-        # If branch is always present
-        body = self.while_body.__repr__()
-        body = body.replace('\n', '\n  ')
-        out += '\n  Body: {}'.format(body)
-        # There may be nothing afterwards
+    def __repr__(self, indent=0):
+        ind = ' ' * (indent+2)
         if self.next_block:
-            out += '\n\n{}'.format(self.next_block)
-        return out
+            nxt = '\n{}'.format(self.next_block.__repr__(indent=indent))
+        else:
+            nxt = ''
+        return '{cls}:\n{ind}Relation:\n{ind}  {rel}\n{ind}Body:\n{bdy}{nxt}'.format(
+            cls='{}{}'.format(' ' * indent, self.__class__.__name__),
+            ind=' ' * (indent+2),
+            rel=self._repr_instructions(indent+2),
+            bdy=self.while_body.__repr__(indent=indent+4),
+            nxt=nxt,
+        )

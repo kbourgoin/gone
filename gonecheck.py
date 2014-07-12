@@ -233,10 +233,7 @@ def main():
         program = parser.parse(open(sys.argv[1]).read())
         # Check the program
         check_program(program)
+        print(program)
 
 if __name__ == '__main__':
     main()
-
-
-
-

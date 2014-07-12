@@ -76,7 +76,7 @@ class GenerateCode(goneast.NodeVisitor):
         """
         # Create an entry function
         entry_fn = InitializerFunctionBlock()
-        entry_fn.instructions.append(('declare_func', '__start', 'int', []))
+        entry_fn.instructions.append(('declare_func', '__start', 'int'))
         entry_fn.body = BasicBlock()
         curr_entry_block = entry_fn.body # will keep track of entry body
 
